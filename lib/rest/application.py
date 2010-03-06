@@ -48,9 +48,9 @@ class Application(object):
         overriding this method in your application."""
         self.add_collection(RootCollection())
 
-    def add_input_filter(self, controller, action, filter, position=None):
+    def add_input_filter(self, collection, action, filter, position=None):
         """Add an input filter."""
-        key = (controller, action)
+        key = (collection, action)
         if key not in self.input_filters:
             self.input_filters[key] = []
         if position is None:
@@ -58,9 +58,9 @@ class Application(object):
         else:
             self.input_filters[key].insert(position, filter)
 
-    def add_output_filter(self, controller, action, filter, position=None):
+    def add_output_filter(self, collection, action, filter, position=None):
         """Add an output filter."""
-        key = (controller, action)
+        key = (collection, action)
         if key not in self.output_filters:
             self.output_filters[key] = []
         if position is None:
@@ -68,9 +68,9 @@ class Application(object):
         else:
             self.output_filters[key].insert(position, filter)
 
-    def add_exception_handler(self, controller, action, handler, position=None):
+    def add_exception_handler(self, collection, action, handler, position=None):
         """Add an exception handler."""
-        key = (controller, action)
+        key = (collection, action)
         if key not in self.exception_handlers:
             self.exception_handlers[key] = []
         if position is None:
@@ -103,11 +103,11 @@ class Application(object):
 
     def filter_input(self, input, request, response):
         """Filter input."""
-        controller = request.match['controller']
+        collection = request.match['collection']
         action = request.match['action']
-        filters = self.input_filters.get((controller, action), [])
+        filters = self.input_filters.get((collection, action), [])
         filters += self.input_filters.get((None, action), [])
-        filters += self.input_filters.get((controller, None), [])
+        filters += self.input_filters.get((collection, None), [])
         filters += self.input_filters.get((None, None), [])
         for filter in filters:
             input = filter.filter(input, request, response)
@@ -115,11 +115,11 @@ class Application(object):
 
     def filter_output(self, output, request, response):
         """Filter input."""
-        controller = request.match['controller']
+        collection = request.match['collection']
         action = request.match['action']
-        filters = self.output_filters.get((controller, action), [])
+        filters = self.output_filters.get((collection, action), [])
         filters += self.output_filters.get((None, action), [])
-        filters += self.output_filters.get((controller, None), [])
+        filters += self.output_filters.get((collection, None), [])
         filters += self.output_filters.get((None, None), [])
         for filter in filters:
             output = filter.filter(output, request, response)
@@ -127,11 +127,11 @@ class Application(object):
 
     def handle_exception(self, exception, request, response):
         """Handle an exception."""
-        controller = request.match['controller']
+        collection = request.match['collection']
         action = request.match['action']
-        handlers = self.exception_handlers.get((controller, action), [])
+        handlers = self.exception_handlers.get((collection, action), [])
         handlers += self.exception_handlers.get((None, action), [])
-        handlers += self.exception_handlers.get((controller, None), [])
+        handlers += self.exception_handlers.get((collection, None), [])
         handlers += self.exception_handlers.get((None, None), [])
         for handler in handlers:
             handler.handle(exception, request, response)
