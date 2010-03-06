@@ -6,7 +6,7 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-from urlparse import parse_qs
+from cgi import parse_qs
 
 
 class Request(object):
