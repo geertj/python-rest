@@ -15,7 +15,7 @@ from threading import Thread
 from httplib import HTTPConnection
 from xml.etree import ElementTree as etree
 from xml.etree.ElementTree import XML, Element
-from wsgiref.simple_server import make_server
+from wsgiref.simple_server import WSGIServer, make_server as _make_server
 
 from rest import Application, Collection, InputFilter, OutputFilter, Error
 
@@ -105,6 +105,31 @@ class BookApplication(Application):
         self.add_input_filter(None, 'update', XmlInput())
         self.add_output_filter(None, 'show', XmlOutput(), -1)
         self.add_output_filter(None, 'list', XmlOutput(), -1)
+
+
+class PatchedWSGIServer(WSGIServer):
+    """A hacked up WSGI server that provides a .shutdown() method also in
+    Python 2.5. The standard shutdown() method appeared in 2.6."""
+
+    def __init__(self, address, handler_class):
+        WSGIServer.__init__(self, address, handler_class)
+        self._stopped = False
+        self.socket.settimeout(0.5)
+
+    def serve_forever(self):
+        while not self._stopped:
+            self.handle_request()
+
+    def shutdown(self):
+        self._stopped = True
+
+
+def make_server(host, port, app):
+    if hasattr(WSGIServer, 'shutdown'):
+        server_class = WSGIServer
+    else:
+        server_class = PatchedWSGIServer
+    return _make_server(host, port, app, server_class)
 
 
 class TestApplication(object):
