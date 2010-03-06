@@ -7,6 +7,7 @@
 # "AUTHORS" for a complete overview.
 
 import sys
+import time
 import logging
 import httplib as http
 
@@ -126,7 +127,9 @@ class TestApplication(object):
         self.server.RequestHandlerClass.log_request = lambda *args: None
         self.thread = Thread(target=self.server.serve_forever)
         self.thread.start()
-        self.client = HTTPConnection(*self.server.server_address)
+        time.sleep(0.5)  # make sure server is started up
+        address = self.server.socket.getsockname()
+        self.client = HTTPConnection(*address)
 
     def tearDown(self):
         self.server.shutdown()
