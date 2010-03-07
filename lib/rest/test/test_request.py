@@ -41,7 +41,6 @@ class TestRequest(object):
         assert not request.secure
         assert ('Content-Length', '20') in request.headers
         assert ('Content-Type', 'text/plain') in request.headers
-        print request.headers
         assert ('Header-1', 'value1') in request.headers
         assert ('Header-2', 'value2') in request.headers
 
