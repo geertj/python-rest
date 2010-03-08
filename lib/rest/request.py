@@ -6,6 +6,7 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
+import binascii
 from cgi import parse_qs
 
 
@@ -39,6 +40,15 @@ class Request(object):
             if key.startswith('HTTP_'):
                 hkey = '-'.join([ x.title() for x in key[5:].split('_')])
                 self.set_header(hkey, env[key])
+        username = password = None
+        try:
+            method, auth = self.header('Authorization').split(' ')
+            if method == 'Basic':
+                username, password = auth.decode('base64').split(':')
+        except (AttributeError, ValueError, binascii.Error):
+            pass
+        self.username = username
+        self.password = password
         # The handling of Content-Length is a bit complex. Not all WSGI
         # servers will generate an EOF when reading past the end of the
         # request body. Unfortunately PEP-333 allows this behavior.
@@ -46,7 +56,10 @@ class Request(object):
         # Content-Length header does not necessarily mean that there's
         # no request body though, e.g. when using chunked encoding.  See
         # section 4.4 of RFC1616.
-        clen = self.header('Content-Length')
+        try:
+            clen = int(self.header('Content-Length'))
+        except (TypeError, ValueError):
+            clen = None
         if clen is None:
             encoding = self.header('Transfer-Encoding', 'identity')
             if encoding != 'identity':
@@ -54,8 +67,9 @@ class Request(object):
             else:
                 self.content_length = 0
         else:
-            self.content_length = int(clen)
+            self.content_length = clen
         self.bytes_read = 0
+        self.empty_line_read = False
 
     def header(self, name, default=None):
         for hname,value in self.headers:
@@ -78,6 +92,9 @@ class Request(object):
             if size is None or size > bytes_left:
                 size = bytes_left
         input = self.environ['wsgi.input']
+        if not self.empty_line_read:
+            input.read(2)
+            self.empty_line_read = True
         data = input.read(size)
         self.bytes_read += len(data)
         return data

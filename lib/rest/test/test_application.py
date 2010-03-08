@@ -18,6 +18,7 @@ from xml.etree.ElementTree import XML, Element
 
 from rest import (Application, Collection, InputFilter, OutputFilter,
                   Error, make_server)
+from rest.api import request, response
 
 
 class BookCollection(Collection):
@@ -74,7 +75,7 @@ class BookCollection(Collection):
 
 class XmlInput(InputFilter):
 
-    def filter(self, input, request, response):
+    def filter(self, input):
         if request.header('Content-Type') != 'text/xml':
             raise Error, http.UNSUPPORTED_MEDIA_TYPE
         try:
@@ -86,7 +87,7 @@ class XmlInput(InputFilter):
 
 class XmlOutput(OutputFilter):
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         if not isinstance(output, etree._ElementInterface):
             return
         xml = etree.tostring(output)
@@ -103,8 +104,8 @@ class BookApplication(Application):
         super(BookApplication, self).setup_filters()
         self.add_input_filter(None, 'create', XmlInput())
         self.add_input_filter(None, 'update', XmlInput())
-        self.add_output_filter(None, 'show', XmlOutput(), -1)
-        self.add_output_filter(None, 'list', XmlOutput(), -1)
+        self.add_output_filter(None, 'show', XmlOutput(), priority=10)
+        self.add_output_filter(None, 'list', XmlOutput(), priority=10)
 
 
 class TestApplication(object):

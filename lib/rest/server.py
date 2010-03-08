@@ -15,20 +15,26 @@ class PatchedWSGIServer(WSGIServer):
 
     def __init__(self, address, handler_class):
         WSGIServer.__init__(self, address, handler_class)
-        self._stopped = False
-        self.socket.settimeout(0.5)
+        # Suppress logging
+        self.RequestHandlerClass.log_request = lambda *args: None
+        self.address = self.socket.getsockname()
 
-    def serve_forever(self):
-        while not self._stopped:
-            self.handle_request()
+    if not hasattr(WSGIServer, 'shutdown'):
 
-    def shutdown(self):
-        self._stopped = True
+        def serve_forever(self):
+            self._stopped = False
+            self.socket.settimeout(0.5)
+            while not self._stopped:
+                self.handle_request()
+
+        def get_request(self):
+            conn, addr = self.socket.accept()
+            conn.settimeout(None)
+            return (conn, addr)
+
+        def shutdown(self):
+            self._stopped = True
 
 
 def make_server(host, port, app):
-    if hasattr(WSGIServer, 'shutdown'):
-        server_class = WSGIServer
-    else:
-        server_class = PatchedWSGIServer
-    return _make_server(host, port, app, server_class)
+    return _make_server(host, port, app, PatchedWSGIServer)

@@ -15,6 +15,15 @@ class Collection(object):
     """
 
     name = None
+    objectname = None
 
     def method_error(self):
+        """INTERNAL: placeholder for a method that is called with the wrong
+        HTTP method."""
         raise NotImplementedError
+
+    def setup(self):
+        """Called just before a request method is called."""
+
+    def close(self):
+        """Called after a request has been finished."""
