@@ -8,27 +8,28 @@
 
 import traceback
 import httplib as http
+from rest.api import request, response
 from rest.error import Error
 
 
 class InputFilter(object):
     """Base class for input filters."""
 
-    def filter(self, input, request, response):
+    def filter(self, input):
         raise NotImplementedError
 
 
 class OutputFilter(object):
     """Base class for output filters."""
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         raise NotImplementedError
 
 
 class ExceptionHandler(object):
     """Base class for exception handlerss."""
 
-    def handle(self, exception, request, response):
+    def handle(self, exception):
         raise NotImplementedError
 
 
@@ -38,9 +39,9 @@ class ReturnIfInput(InputFilter):
     def __init__(self, status):
         self.status = status
 
-    def filter(self, input, request, response):
+    def filter(self, input):
         if input:
-            raise Error, self.status
+            raise Error(self.status, reason='Input provided')
         return input
 
 
@@ -50,9 +51,9 @@ class ReturnIfNoInput(InputFilter):
     def __init__(self, status):
         self.status = status
 
-    def filter(self, input, request, response):
+    def filter(self, input):
         if not input or not response.header('Content-Type'):
-            raise Error, self.status
+            raise Error(self.status, reason='No input provided')
         return input
 
 
@@ -62,7 +63,7 @@ class ReturnIfNoOutput(OutputFilter):
     def __init__(self, status):
         self.status = status
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         if not output:
             response.status = self.status
         return output
@@ -71,7 +72,7 @@ class ReturnIfNoOutput(OutputFilter):
 class HandleCreateOutput(OutputFilter):
     """Handle the output of a "create" action."""
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         response.status = http.CREATED
         url = response.url_for(collection=request.match['collection'],
                                action='show', id=output)
@@ -82,7 +83,7 @@ class HandleCreateOutput(OutputFilter):
 class ConvertUnicodeToBytes(OutputFilter):
     """Covert unicode output to bytes."""
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         if isinstance(output, unicode):
             output = output.encode('utf-8')
             ctype = response.header('Content-Type')
@@ -93,7 +94,7 @@ class ConvertUnicodeToBytes(OutputFilter):
 class ConvertNoneToEmptyString(OutputFilter):
     """Covert None to an empty string."""
 
-    def filter(self, output, request, response):
+    def filter(self, output):
         if output is None:
             return ''
         return output
@@ -106,7 +107,7 @@ class OnExceptionReturn(ExceptionHandler):
         self.exception = exception
         self.status = status
 
-    def handle(self, exception, request, response):
+    def handle(self, exception):
         if isinstance(exception, self.exception):
             raise Error, self.status
 
@@ -117,7 +118,7 @@ class OnUnexpectedKeywordReturn(ExceptionHandler):
     def __init__(self, status):
         self.status = status
 
-    def handle(self, exception, request, response):
+    def handle(self, exception):
         if isinstance(exception, TypeError):
             text = exception.args[0]
             if text.find('unexpected keyword argument'):
@@ -127,7 +128,7 @@ class OnUnexpectedKeywordReturn(ExceptionHandler):
 class OnExceptionReRaise(ExceptionHandler):
     """Re-raise if an exception occurs."""
 
-    def handle(self, exception, request, response):
+    def handle(self, exception):
         exception.traceback = traceback.format_exc()
         raise exception
 
@@ -135,7 +136,7 @@ class OnExceptionReRaise(ExceptionHandler):
 class CheckMappingErrors(InputFilter):
     """Check for errors during the mapping process."""
 
-    def filter(self, input, request, response):
+    def filter(self, input):
         if request.match.get('action') == 'method_error':
             headers = [('Allowed', request.match['allowed'].encode('ascii'))]
             raise Error(http.METHOD_NOT_ALLOWED, headers)
