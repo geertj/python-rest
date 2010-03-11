@@ -102,10 +102,10 @@ class BookApplication(Application):
 
     def setup_filters(self):
         super(BookApplication, self).setup_filters()
-        self.add_input_filter(None, 'create', XmlInput())
-        self.add_input_filter(None, 'update', XmlInput())
-        self.add_output_filter(None, 'show', XmlOutput(), priority=10)
-        self.add_output_filter(None, 'list', XmlOutput(), priority=10)
+        self.add_input_filter(XmlInput(), action='create')
+        self.add_input_filter(XmlInput(), action='update')
+        self.add_output_filter(XmlOutput(), action='show', priority=10)
+        self.add_output_filter(XmlOutput(), action='list', priority=10)
 
 
 class TestApplication(object):

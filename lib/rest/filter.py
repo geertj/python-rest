@@ -6,14 +6,18 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-import traceback
-import httplib as http
-from rest.api import request, response
-from rest.error import Error
+
+HIGHER = 40
+NORMAL = 50
+LOWER = 60
 
 
 class InputFilter(object):
     """Base class for input filters."""
+
+    collection = None
+    action = None
+    priority = NORMAL
 
     def filter(self, input):
         raise NotImplementedError
@@ -22,6 +26,10 @@ class InputFilter(object):
 class OutputFilter(object):
     """Base class for output filters."""
 
+    collection = None
+    action = None
+    priority = NORMAL
+
     def filter(self, output):
         raise NotImplementedError
 
@@ -29,115 +37,9 @@ class OutputFilter(object):
 class ExceptionHandler(object):
     """Base class for exception handlerss."""
 
+    collection = None
+    action = None
+    priority = NORMAL
+
     def handle(self, exception):
         raise NotImplementedError
-
-
-class ReturnIfInput(InputFilter):
-    """Return a HTTP status if there is any input to the HTTP request."""
-
-    def __init__(self, status):
-        self.status = status
-
-    def filter(self, input):
-        if input:
-            raise Error(self.status, reason='Input provided')
-        return input
-
-
-class ReturnIfNoInput(InputFilter):
-    """Return a HTTP status if there is no input to the HTTP request."""
-
-    def __init__(self, status):
-        self.status = status
-
-    def filter(self, input):
-        if not input or not response.header('Content-Type'):
-            raise Error(self.status, reason='No input provided')
-        return input
-
-
-class ReturnIfNoOutput(OutputFilter):
-    """Return a HTTP status if there is no output in the HTTP response."""
-
-    def __init__(self, status):
-        self.status = status
-
-    def filter(self, output):
-        if not output:
-            response.status = self.status
-        return output
-
-
-class HandleCreateOutput(OutputFilter):
-    """Handle the output of a "create" action."""
-
-    def filter(self, output):
-        response.status = http.CREATED
-        url = response.url_for(collection=request.match['collection'],
-                               action='show', id=output)
-        response.set_header('Location', url)
-        return ''
-
-
-class ConvertUnicodeToBytes(OutputFilter):
-    """Covert unicode output to bytes."""
-
-    def filter(self, output):
-        if isinstance(output, unicode):
-            output = output.encode('utf-8')
-            ctype = response.header('Content-Type')
-            response.set_header(ctype, '%s; charset=UTF-8' % ctype)
-        return output
-
-
-class ConvertNoneToEmptyString(OutputFilter):
-    """Covert None to an empty string."""
-
-    def filter(self, output):
-        if output is None:
-            return ''
-        return output
-
-
-class OnExceptionReturn(ExceptionHandler):
-    """If an exception occurred, return a HTTP status."""
-
-    def __init__(self, exception, status):
-        self.exception = exception
-        self.status = status
-
-    def handle(self, exception):
-        if isinstance(exception, self.exception):
-            raise Error, self.status
-
-
-class OnUnexpectedKeywordReturn(ExceptionHandler):
-    """Return a HTTP status if an unexpected keyword exception occurs."""
-
-    def __init__(self, status):
-        self.status = status
-
-    def handle(self, exception):
-        if isinstance(exception, TypeError):
-            text = exception.args[0]
-            if text.find('unexpected keyword argument'):
-                raise Error, self.status
-
-
-class OnExceptionReRaise(ExceptionHandler):
-    """Re-raise if an exception occurs."""
-
-    def handle(self, exception):
-        exception.traceback = traceback.format_exc()
-        raise exception
-
-
-class CheckMappingErrors(InputFilter):
-    """Check for errors during the mapping process."""
-
-    def filter(self, input):
-        if request.match.get('action') == 'method_error':
-            headers = [('Allowed', request.match['allowed'].encode('ascii'))]
-            raise Error(http.METHOD_NOT_ALLOWED, headers)
-        return input

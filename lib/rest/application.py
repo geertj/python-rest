@@ -6,19 +6,21 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
+import sys
 import logging
 import traceback
 import httplib as http
 
 from rfc822 import formatdate
-from routes import Mapper
 
 import rest
 import rest.api
 from rest.request import Request
 from rest.response import Response
 from rest.error import Error
-from rest.filter import *
+from rest.collection import Collection
+from rest.mapper import Mapper, Route
+from rest.filter import InputFilter, OutputFilter, ExceptionHandler
 
 
 class Application(object):
@@ -30,40 +32,44 @@ class Application(object):
         self.start_response = start_response
         self.collections = {}
         self.mapper = Mapper()
-        self.mapper.environ = environ
         self.input_filters = {}
         self.output_filters = {}
         self.exception_handlers = {}
         self.logger = logging.getLogger('rest')
+        self.load_modules()
         self.setup_collections()
         self.setup_filters()
         self.setup_routes()
-        self.mapper.create_regs()
 
     def add_collection(self, collection):
         """Add a single collection."""
         self.collections[collection.name] = collection
 
     def setup_collections(self):
-        """Setup all the collections. You can change the defaults by
-        overriding this method in your application."""
-        self.add_collection(RootCollection())
+        """Implement this method in a subclass to add collections."""
 
-    def add_input_filter(self, collection, action, filter, priority=50):
+    def add_route(self, route):
+        """Add a route."""
+        self.mapper.connect(route)
+
+    def setup_routes(self):
+        """Implement this method in a subclass to add routes."""
+
+    def add_input_filter(self, filter, collection=None, action=None, priority=50):
         """Add an input filter."""
         key = (collection, action)
         if key not in self.input_filters:
             self.input_filters[key] = []
         self.input_filters[key].append((priority, filter))
 
-    def add_output_filter(self, collection, action, filter, priority=50):
+    def add_output_filter(self, filter, collection=None, action=None, priority=50):
         """Add an output filter."""
         key = (collection, action)
         if key not in self.output_filters:
             self.output_filters[key] = []
         self.output_filters[key].append((priority, filter))
 
-    def add_exception_handler(self, collection, action, handler, priority=50):
+    def add_exception_handler(self, handler, collection=None, action=None, priority=50):
         """Add an exception handler."""
         key = (collection, action)
         if key not in self.exception_handlers:
@@ -71,29 +77,35 @@ class Application(object):
         self.exception_handlers[key].append((priority, handler))
 
     def setup_filters(self):
-        """Set up the filters. You can change the defaults by overriding this
-        method in your application."""
-        self.add_input_filter(None, 'show', ReturnIfInput(http.BAD_REQUEST))
-        self.add_output_filter(None, 'show',
-                    ReturnIfNoOutput(http.NOT_FOUND))
-        self.add_input_filter(None, 'list', ReturnIfInput(http.BAD_REQUEST))
-        self.add_input_filter(None, 'delete', ReturnIfInput(http.BAD_REQUEST))
-        self.add_exception_handler(None, 'delete',
-                    OnExceptionReturn(KeyError, http.NOT_FOUND))
-        self.add_input_filter(None, 'create', ReturnIfNoInput(http.BAD_REQUEST))
-        self.add_output_filter(None, 'create', ReturnIfNoOutput(http.BAD_REQUEST))
-        self.add_output_filter(None, 'create', HandleCreateOutput())
-        self.add_input_filter(None, 'update', ReturnIfNoInput(http.BAD_REQUEST))
-        self.add_exception_handler(None, 'update',
-                    OnExceptionReturn(KeyError, http.NOT_FOUND))
-        self.add_input_filter(None, None, CheckMappingErrors())
-        self.add_exception_handler(None, None,
-                    OnUnexpectedKeywordReturn(http.BAD_REQUEST))
-        self.add_exception_handler(None, None, OnExceptionReRaise())
-        self.add_output_filter(None, None, ConvertNoneToEmptyString(),
-                    priority=99)
-        self.add_output_filter(None, None, ConvertUnicodeToBytes(),
-                    priority=99)
+        """Implement this method in a subclass to add filters."""
+
+    def load_module(self, module):
+        """Load all collections, routes, input filters, output filters and
+        exception handlers from a module."""
+        __import__(module)
+        module = sys.modules[module]
+        for key in dir(module):
+            obj = getattr(module, key)
+            mname = getattr(obj, '__module__', None)
+            if not mname or mname != module.__name__:
+                continue
+            if issubclass(obj, Collection):
+                self.add_collection(obj())
+            elif issubclass(obj, Route):
+                self.add_route(obj())
+            elif issubclass(obj, InputFilter):
+                self.add_input_filter(obj(), obj.collection, obj.action,
+                                      obj.priority)
+            elif issubclass(obj, OutputFilter):
+                self.add_output_filter(obj(), obj.collection, obj.action,
+                                       obj.priority)
+            elif issubclass(obj, ExceptionHandler):
+                self.add_exception_handler(obj(), obj.collection, obj.action,
+                                           obj.priority)
+
+    def load_modules(self):
+        """Implement this method in a subclass to load modules."""
+        self.load_module('rest.default')
 
     def filter_input(self, collection, action, input):
         """Filter input."""
@@ -125,31 +137,8 @@ class Application(object):
         handlers += self.exception_handlers.get((None, None), [])
         handlers.sort(lambda x,y: cmp(x[0], y[0]))
         for prio, handler in handlers:
-            handler.handle(exception)
-
-    def add_route(self, *args, **kwargs):
-        """Add a route."""
-        self.mapper.connect(*args, **kwargs)
-
-    def setup_routes(self):
-        """Set up the default routes. You can change the default by overriding
-        this method in your applications."""
-        self.add_route('/api', collection='root', action='list',
-                       conditions={'method': ['GET']})
-        self.add_route('/api/:collection', action='list',
-                       conditions={'method': ['GET']})
-        self.add_route('/api/:collection', action='create',
-                       conditions={'method': ['POST']})
-        self.add_route('/api/:collection', action='method_error',
-                       allowed='GET, POST')
-        self.add_route('/api/:collection/:id', action='show',
-                       conditions={'method': ['GET']})
-        self.add_route('/api/:collection/:id', action='delete',
-                       conditions={'method': ['DELETE']})
-        self.add_route('/api/:collection/:id', action='update',
-                       conditions={'method': ['PUT']})
-        self.add_route('/api/:collection/:id', action='method_error',
-                       allowed='GET, DELETE, PUT')
+            exception = handler.handle(exception)
+        return exception
 
     def simple_response(self, status, headers=None, body=None):
         """Send a simple text/plain response to the client."""
@@ -200,9 +189,10 @@ class Application(object):
         request = Request(self.environ, self.mapper)
         response = Response(self.environ, self.mapper)
         self.logger.debug('New request: %s %s' % (request.method, request.uri))
-        m = self.mapper.match(request.path)
+        m = self.mapper.match(request.path, request.method)
         if not m:
             raise Error(http.NOT_FOUND, reason='URL unmapped')
+        self.logger.debug('URL mapped to %s:%s' % (m['collection'], m['action']))
         request.match = m
         collection = self.collections.get(m['collection'])
         if not collection or not hasattr(collection, m['action']):
@@ -213,18 +203,26 @@ class Application(object):
             if key not in ('controller', 'collection', 'action'):
                 kwargs[key] = m[key]
         input = request.read()
+        self.logger.debug('Read %d bytes of input' % len(input))
         self.register_globals(collection, request, response)
         try:
+            self.logger.debug('Running input filters')
             input = self.filter_input(m['collection'], m['action'], input)
             if input:
                 kwargs['input'] = input
+            output = None
             collection.setup()
             try:
                 output = method(**kwargs)
             except Exception, exception:
-                self.handle_exception(m['collection'], m['action'], exception)
+                self.logger.debug('Exception occurred, running handlers.')
+                exception = self.handle_exception(m['collection'], m['action'],
+                                                  exception)
+                if exception:
+                    raise exception
             finally:
                 collection.close()
+            self.logger.debug('Running output filters')
             output = self.filter_output(m['collection'], m['action'], output)
         finally:
             self.release_globals()
