@@ -38,6 +38,6 @@ class Response(object):
             scheme = 'https'
         else:
             scheme = 'http'
-        path = self.mapper.generate(**kwargs)
+        path = self.mapper.url_for(**kwargs)
         url = '%s://%s%s' % (scheme, self.environ['SERVER_NAME'], path)
         return url

@@ -69,7 +69,6 @@ class Request(object):
         else:
             self.content_length = clen
         self.bytes_read = 0
-        self.empty_line_read = False
 
     def header(self, name, default=None):
         for hname,value in self.headers:
@@ -92,9 +91,6 @@ class Request(object):
             if size is None or size > bytes_left:
                 size = bytes_left
         input = self.environ['wsgi.input']
-        if not self.empty_line_read:
-            input.read(2)
-            self.empty_line_read = True
         data = input.read(size)
         self.bytes_read += len(data)
         return data
