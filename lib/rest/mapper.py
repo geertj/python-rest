@@ -1,14 +1,15 @@
 #
 # This file is part of Python-REST. Python-REST is free software that is
-# made available under the MIT license. Consult the file "LICENSE" that is
-# distributed together with this file for the exact licensing terms.
+# made available under the MIT license. Consult the file "LICENSE" that
+# is distributed together with this file for the exact licensing terms.
 #
-# Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
-# "AUTHORS" for a complete overview.
+# Python-REST is copyright (c) 2010 by the Python-REST authors. See the
+# file "AUTHORS" for a complete overview.
 
 """
-This file is a trivial re-implementation of Python Routes. It is not near as
-feature complete but it small and it reduces an external dependency.
+This module contains trivial re-implementation of Python Routes. It is
+not near as feature complete but it small and it removes an external
+dependency.
 """
 
 import re
@@ -17,20 +18,12 @@ from string import Template
 
 class Route(object):
 
-    path = None
-    methods = ['GET', 'POST', 'PUT', 'DELETE']
-    args = {}
-
     _re_var = re.compile(':([a-z][a-z0-9_]+)|{([a-z][a-z0-9_]+)}', re.I)
 
-    def __init__(self, path=None, methods=None, **kwargs):
-        if path is not None:
-            self.path = path
-        if methods is not None:
-            self.methods = methods
-        if kwargs:
-            self.args = self.args.copy()
-            self.args.update(kwargs)
+    def __init__(self, path, method=None, **kwargs):
+        self.path = path
+        self.method = method
+        self.kwargs = kwargs
         self.varnames = []
         self.pattern = '^%s$' % self._re_var.sub(self._replace_var_names,
                                                  self.path)
@@ -42,14 +35,25 @@ class Route(object):
         self.varnames.append(name)
         return '(?P<%s>[^/]+)' % name
 
-    def _match(self, **kwargs):
+    def _match(self, url, method=None):
+        mobj = self.regex.match(url)
+        if not mobj:
+            return
+        if method and self.method and method != self.method:
+            return
+        match = mobj.groupdict().copy()
+        match.update(self.kwargs)
+        return match
+
+    def _url_for(self, **kwargs):
         for name in self.varnames:
             if name not in kwargs:
-                return False
-        for arg in self.args:
-            if self.args[arg] != kwargs.get(arg):
-                return False
-        return True
+                return
+        for arg in self.kwargs:
+            if self.kwargs[arg] != kwargs.get(arg):
+                return
+        url = self.template.substitute(kwargs)
+        return url
 
 
 class Mapper(object):
@@ -57,22 +61,26 @@ class Mapper(object):
     def __init__(self):
         self.routes = []
 
-    def connect(self, route):
+    def connect(self, path, method=None, **kwargs):
+        route = Route(path, method, **kwargs)
         self.routes.append(route)
 
     def match(self, url, method=None):
         for route in self.routes:
-            mobj = route.regex.match(url)
-            if not mobj:
-                continue
-            if method and method not in route.methods:
-                continue
-            ret = mobj.groupdict().copy()
-            ret.update(route.args)
-            return ret
+            match = route._match(url, method)
+            if match:
+                return match
 
     def url_for(self, **kwargs):
         for route in self.routes:
-            if route._match(**kwargs):
-                url = route.template.substitute(kwargs)
+            url = route._url_for(**kwargs)
+            if url:
                 return url
+
+    def methods_for(self, url):
+        methods = set()
+        for route in self.routes:
+            match = route._match(url, method=None)
+            if match and route.method:
+                methods.add(route.method)
+        return methods
