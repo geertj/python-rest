@@ -18,9 +18,7 @@ import rest.api
 from rest.request import Request
 from rest.response import Response
 from rest.error import Error
-from rest.collection import Collection
-from rest.mapper import Mapper, Route
-from rest.filter import InputFilter, OutputFilter, ExceptionHandler
+from rest.mapper import Mapper
 
 
 class Application(object):
@@ -38,8 +36,8 @@ class Application(object):
         self.logger = logging.getLogger('rest')
         self.load_modules()
         self.setup_collections()
-        self.setup_filters()
         self.setup_routes()
+        self.setup_filters()
 
     def add_collection(self, collection):
         """Add a single collection."""
@@ -48,9 +46,9 @@ class Application(object):
     def setup_collections(self):
         """Implement this method in a subclass to add collections."""
 
-    def add_route(self, route):
+    def add_route(self, *args, **kwargs):
         """Add a route."""
-        self.mapper.connect(route)
+        self.mapper.connect(*args, **kwargs)
 
     def setup_routes(self):
         """Implement this method in a subclass to add routes."""
@@ -83,25 +81,11 @@ class Application(object):
         """Load all collections, routes, input filters, output filters and
         exception handlers from a module."""
         __import__(module)
-        module = sys.modules[module]
-        for key in dir(module):
-            obj = getattr(module, key)
-            mname = getattr(obj, '__module__', None)
-            if not mname or mname != module.__name__:
-                continue
-            if issubclass(obj, Collection):
-                self.add_collection(obj())
-            elif issubclass(obj, Route):
-                self.add_route(obj())
-            elif issubclass(obj, InputFilter):
-                self.add_input_filter(obj(), obj.collection, obj.action,
-                                      obj.priority)
-            elif issubclass(obj, OutputFilter):
-                self.add_output_filter(obj(), obj.collection, obj.action,
-                                       obj.priority)
-            elif issubclass(obj, ExceptionHandler):
-                self.add_exception_handler(obj(), obj.collection, obj.action,
-                                           obj.priority)
+        try:
+            setup = getattr(sys.modules[module], 'setup')
+        except AttributeError:
+            return
+        setup(self)
 
     def load_modules(self):
         """Implement this method in a subclass to load modules."""
@@ -159,6 +143,7 @@ class Application(object):
         rest.api.request._register(request)
         rest.api.response._register(response)
         rest.api.collection._register(collection)
+        rest.api.mapper._register(self.mapper)
         rest.api.application._register(self)
 
     def release_globals(self):
@@ -166,6 +151,7 @@ class Application(object):
         rest.api.request._release()
         rest.api.response._release()
         rest.api.collection._release()
+        rest.api.mapper._release()
         rest.api.application._release()
 
     def __iter__(self):

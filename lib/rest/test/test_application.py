@@ -19,6 +19,7 @@ from xml.etree.ElementTree import XML, Element
 from rest import (Application, Collection, InputFilter, OutputFilter,
                   Error, make_server)
 from rest.api import request, response
+from rest.filter import LOWER, HIGHER
 
 
 class BookCollection(Collection):
@@ -102,10 +103,10 @@ class BookApplication(Application):
 
     def setup_filters(self):
         super(BookApplication, self).setup_filters()
-        self.add_input_filter(XmlInput(), action='create')
-        self.add_input_filter(XmlInput(), action='update')
-        self.add_output_filter(XmlOutput(), action='show', priority=10)
-        self.add_output_filter(XmlOutput(), action='list', priority=10)
+        self.add_input_filter(XmlInput(), action='create', priority=LOWER)
+        self.add_input_filter(XmlInput(), action='update', priority=LOWER)
+        self.add_output_filter(XmlOutput(), action='show', priority=HIGHER)
+        self.add_output_filter(XmlOutput(), action='list', priority=HIGHER)
 
 
 class TestApplication(object):
@@ -258,12 +259,15 @@ class TestApplication(object):
         client.request('PUT', '/api/books')
         response = client.getresponse()
         assert response.status == http.METHOD_NOT_ALLOWED
-        assert response.getheader('Allowed') == 'GET, POST'
+        allowed = set(response.getheader('Allowed').split(', '))
+        assert allowed == set(['GET', 'POST'])
         client.request('DELETE', '/api/books')
         response = client.getresponse()
         assert response.status == http.METHOD_NOT_ALLOWED
-        assert response.getheader('Allowed') == 'GET, POST'
+        allowed = set(response.getheader('Allowed').split(', '))
+        assert allowed == set(['GET', 'POST'])
         client.request('POST', '/api/books/1')
         response = client.getresponse()
         assert response.status == http.METHOD_NOT_ALLOWED
-        assert response.getheader('Allowed') == 'GET, DELETE, PUT'
+        allowed = set(response.getheader('Allowed').split(', '))
+        assert allowed == set(['GET', 'DELETE', 'PUT'])
