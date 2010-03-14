@@ -72,9 +72,9 @@ class HandleCommonExceptions(ExceptionHandler):
     def handle(self, exception):
         if isinstance(exception, TypeError) \
                 or isinstance(exception, ValueError):
-            return Error(http.BAD_REQUEST, reason='TypeError or ValueError')
+            return Error(http.BAD_REQUEST, reason=str(exception))
         elif isinstance(exception, KeyError):
-            return Error(http.NOT_FOUND, reason='KeyError exception')
+            return Error(http.NOT_FOUND, reason=str(exception))
         exception.traceback = traceback.format_exc()
         return exception
 
@@ -113,7 +113,22 @@ class SetLocationHeader(OutputFilter):
         return ''
 
 
-class ValidatedInput(InputFilter):
+class RequireContentType(InputFilter):
+
+    def __init__(self, ctype):
+        if isinstance(ctype, list) or isinstance(ctype, tuple):
+            self.content_type = ctype
+        else:
+            self.content_type = [ctype]
+
+    def filter(self, input):
+        ctype = request.header('Content-Type')
+        if ctype not in self.content_type:
+            raise Error(http.UNSUPPORTED_MEDIA_TYPE)
+        return input
+
+
+class InputValidator(InputFilter):
 
     def __init__(self, validator):
         self.validator = validator
@@ -122,7 +137,7 @@ class ValidatedInput(InputFilter):
         return self.validator.validate(input)
 
 
-def ValidatedOutput(OutputFilter):
+class OutputValidator(OutputFilter):
 
     def __init__(self, validator):
         self.validator = validator

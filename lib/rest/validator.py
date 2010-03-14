@@ -181,13 +181,12 @@ class ValidationError(Exception):
 class Validator(object):
     """Rule based validation."""
 
-    def __init__(self, ignore_unknown=False):
+    def __init__(self, globals):
         self.rules = []
-        self.ignore_unknown = ignore_unknown
+        self.globals = globals
 
     def rule(self, rule):
         rule = Rule.parse(rule)
-        rule.globals = globals()
         self.rules.append(rule)
 
     def validate(self, input):
@@ -200,7 +199,7 @@ class Validator(object):
                 value = input[name]
                 newname = rule.right.name
                 for xform in rule.left.transforms:
-                    xform = eval(xform, rule.globals)
+                    xform = eval(xform, self.globals)
                     value = xform(value)
                 validated[newname] = value
             elif rule.mandatory:
@@ -223,7 +222,7 @@ class Validator(object):
                 value = output[name]
                 newname = rule.left.name
                 for xform in rule.right.transforms:
-                    xform = eval(xform, rule.globals)
+                    xform = eval(xform, self.globals)
                     value = xform(value)
                 reversed[newname] = value
         for key in output:

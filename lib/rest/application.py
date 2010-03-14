@@ -33,11 +33,18 @@ class Application(object):
         self.input_filters = {}
         self.output_filters = {}
         self.exception_handlers = {}
+        self.serial = 0
         self.logger = logging.getLogger('rest')
         self.load_modules()
         self.setup_collections()
         self.setup_routes()
         self.setup_filters()
+
+    def _serial(self):
+        """INTERNAL: return a monotonically increasing counter."""
+        serial = self.serial
+        self.serial += 1
+        return serial
 
     def add_collection(self, collection):
         """Add a single collection."""
@@ -55,24 +62,36 @@ class Application(object):
 
     def add_input_filter(self, filter, collection=None, action=None, priority=50):
         """Add an input filter."""
+        if isinstance(action, tuple) or isinstance(action, list):
+            for act in action:
+                self.add_input_filter(filter, collection, act, priority)
+            return
         key = (collection, action)
         if key not in self.input_filters:
             self.input_filters[key] = []
-        self.input_filters[key].append((priority, filter))
+        self.input_filters[key].append((priority, self._serial(), filter))
 
     def add_output_filter(self, filter, collection=None, action=None, priority=50):
         """Add an output filter."""
+        if isinstance(action, tuple) or isinstance(action, list):
+            for act in action:
+                self.add_output_filter(filter, collection, act, priority)
+            return
         key = (collection, action)
         if key not in self.output_filters:
             self.output_filters[key] = []
-        self.output_filters[key].append((priority, filter))
+        self.output_filters[key].append((priority, self._serial(), filter))
 
     def add_exception_handler(self, handler, collection=None, action=None, priority=50):
         """Add an exception handler."""
+        if isinstance(action, tuple) or isinstance(action, list):
+            for act in action:
+                self.add_exception_handler(handler, collection, act, priority)
+            return
         key = (collection, action)
         if key not in self.exception_handlers:
             self.exception_handlers[key] = []
-        self.exception_handlers[key].append((priority, handler))
+        self.exception_handlers[key].append((priority, self._serial(), handler))
 
     def setup_filters(self):
         """Implement this method in a subclass to add filters."""
@@ -97,8 +116,8 @@ class Application(object):
         filters += self.input_filters.get((None, action), [])
         filters += self.input_filters.get((collection, None), [])
         filters += self.input_filters.get((None, None), [])
-        filters.sort(lambda x,y: cmp(x[0], y[0]))
-        for prio, filter in filters:
+        filters.sort(lambda x,y: cmp(x[0:2], y[0:2]))
+        for prio, serial, filter in filters:
             input = filter.filter(input)
         return input
 
@@ -108,8 +127,8 @@ class Application(object):
         filters += self.output_filters.get((None, action), [])
         filters += self.output_filters.get((collection, None), [])
         filters += self.output_filters.get((None, None), [])
-        filters.sort(lambda x,y: cmp(x[0], y[0]))
-        for prio, filter in filters:
+        filters.sort(lambda x,y: cmp(x[0:2], y[0:2]))
+        for prio, serial, filter in filters:
             output = filter.filter(output)
         return output
 
@@ -119,8 +138,8 @@ class Application(object):
         handlers += self.exception_handlers.get((None, action), [])
         handlers += self.exception_handlers.get((collection, None), [])
         handlers += self.exception_handlers.get((None, None), [])
-        handlers.sort(lambda x,y: cmp(x[0], y[0]))
-        for prio, handler in handlers:
+        handlers.sort(lambda x,y: cmp(x[0:2], y[0:2]))
+        for prio, serial, handler in handlers:
             exception = handler.handle(exception)
         return exception
 
