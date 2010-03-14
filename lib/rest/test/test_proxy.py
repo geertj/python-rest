@@ -48,5 +48,4 @@ class TestProxy(object):
         t1.start(); t2.start()
         t1.join(); t2.join()
         assert 'test' not in proxy
-        print result
         assert result == [0, 0]
