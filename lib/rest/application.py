@@ -9,20 +9,19 @@
 import sys
 import logging
 import traceback
-import httplib as http
-
-from rfc822 import formatdate
 
 import rest
 import rest.api
+
 from rest.request import Request
 from rest.response import Response
 from rest.error import Error
 from rest.mapper import Mapper
+from rest import http
 
 
 class Application(object):
-    """A WSGI Application that implements a RESTful API."""
+    """A mini framework for creating RESTful APIs."""
 
     def __init__(self, environ, start_response):
         """Constructor."""
@@ -145,12 +144,12 @@ class Application(object):
 
     def simple_response(self, status, headers=None, body=None):
         """Send a simple text/plain response to the client."""
-        statusline = '%s %s' % (status, http.responses[status])
+        statusline = '%s %s' % (status, http.reasons[status])
         if headers is None:
             headers = []
         if body is None:
-            body = http.responses[status]
-        headers.append(('Date', formatdate()))
+            body = http.reasons[status]
+        headers.append(('Date', http.format_date()))
         headers.append(('Server', '%s/%s' % (rest.name, rest.version)))
         headers.append(('Content-Type', 'text/plain'))
         headers.append(('Content-Length', str(len(body))))
@@ -234,6 +233,6 @@ class Application(object):
         self.logger.debug('Response: %s (%s; %d bytes)' %
                      (response.status, response.header('Content-Type'),
                       len(output)))
-        status = '%s %s' % (response.status, http.responses[response.status])
+        status = '%s %s' % (response.status, http.reasons[response.status])
         self.start_response(status, response.headers)
         return output
