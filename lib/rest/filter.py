@@ -126,21 +126,3 @@ class RequireContentType(InputFilter):
         if ctype not in self.content_type:
             raise Error(http.UNSUPPORTED_MEDIA_TYPE)
         return input
-
-
-class InputValidator(InputFilter):
-
-    def __init__(self, validator):
-        self.validator = validator
-
-    def filter(self, input):
-        return self.validator.validate(input)
-
-
-class OutputValidator(OutputFilter):
-
-    def __init__(self, validator):
-        self.validator = validator
-
-    def filter(self, output):
-        return self.validator.reverse(output)
