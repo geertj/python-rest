@@ -7,7 +7,6 @@
 # "AUTHORS" for a complete overview.
 
 from rest import Request
-from routes import Mapper
 
 
 environ = {
@@ -31,7 +30,7 @@ environ = {
 class TestRequest(object):
 
     def test_attributes(self):
-        request = Request(environ, Mapper())
+        request = Request(environ)
         assert request.uri == '/foo/bar/baz?arg=val&arg2=val%202'
         assert request.method == 'GET'
         assert request.script == '/foo'
@@ -45,7 +44,7 @@ class TestRequest(object):
         assert ('Header-2', 'value2') in request.headers
 
     def test_headers(self):
-        request = Request(environ, Mapper())
+        request = Request(environ)
         assert len(request.headers) == 4
         request.set_header('Content-Type', 'text/xml')
         assert len(request.headers) == 4

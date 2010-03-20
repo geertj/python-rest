@@ -13,9 +13,8 @@ from cgi import parse_qs
 class Request(object):
     """HTTP Request"""
 
-    def __init__(self, env, mapper):
+    def __init__(self, env):
         self.environ = env
-        self.mapper = mapper
         self.uri = '%s%s' % (env['SCRIPT_NAME'], env['PATH_INFO'])
         if env['QUERY_STRING']:
             self.uri += '?%s' % env['QUERY_STRING']
