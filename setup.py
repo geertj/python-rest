@@ -10,15 +10,18 @@ from setuptools import setup
 
 setup(
     name = 'python-rest',
-    version = '0.8',
+    version = '1.0',
     description = 'A mini-framework for creating RESTful applications.',
     author = 'Geert Jansen',
     author_email = 'geertj@gmail.com',
     url = 'http://bitbucket.org/geertj/python-rest',
     license = 'MIT',
-    classifiers = ['Development Status :: 4 - Beta',
+    classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
         'Programming Language :: Python'],
     package_dir = {'': 'lib'},
     packages = ['rest', 'rest.test'],
