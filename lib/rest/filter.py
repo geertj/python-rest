@@ -7,8 +7,8 @@
 # "AUTHORS" for a complete overview.
 
 import traceback
-import httplib as http
 
+from rest import http
 from rest.api import request, response, mapper, collection
 from rest.error import Error
 

@@ -7,7 +7,6 @@
 # "AUTHORS" for a complete overview.
 
 import httplib as http
-from routes import Mapper
 from rest import Response
 from rest.test.test_request import environ
 
@@ -15,12 +14,12 @@ from rest.test.test_request import environ
 class TestResponse(object):
 
     def test_basic(self):
-        response = Response(environ, Mapper())
+        response = Response(environ)
         assert response.status == http.OK
         assert response.header('Content-Type') == 'text/plain'
 
     def test_headers(self):
-        response = Response(environ, Mapper())
+        response = Response(environ)
         assert len(response.headers) == 1
         response.set_header('Content-Type', 'text/xml')
         assert len(response.headers) == 1

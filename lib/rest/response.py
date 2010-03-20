@@ -6,15 +6,15 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-import httplib as http
+from rest import http
+from rest.api import mapper
 
 
 class Response(object):
     """HTTP Response"""
 
-    def __init__(self, environ, mapper):
+    def __init__(self, environ):
         self.environ = environ
-        self.mapper = mapper
         self.status = http.OK
         self.headers = [('Content-Type', 'text/plain')]
 
@@ -38,6 +38,6 @@ class Response(object):
             scheme = 'https'
         else:
             scheme = 'http'
-        path = self.mapper.url_for(**kwargs)
+        path = mapper.url_for(**kwargs)
         url = '%s://%s%s' % (scheme, self.environ['SERVER_NAME'], path)
         return url

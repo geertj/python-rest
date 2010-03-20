@@ -190,8 +190,8 @@ class Application(object):
 
     def respond(self):
         """Respond to a request."""
-        request = Request(self.environ, self.mapper)
-        response = Response(self.environ, self.mapper)
+        request = Request(self.environ)
+        response = Response(self.environ)
         self.logger.debug('New request: %s %s' % (request.method, request.uri))
         m = self.mapper.match(request.path, request.method)
         if not m:
