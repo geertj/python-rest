@@ -100,10 +100,10 @@ class Application(object):
         exception handlers from a module."""
         __import__(module)
         try:
-            setup = getattr(sys.modules[module], 'setup')
+            setup_module = getattr(sys.modules[module], 'setup_module')
         except AttributeError:
             return
-        setup(self)
+        setup_module(self)
 
     def load_modules(self):
         """Implement this method in a subclass to load modules."""

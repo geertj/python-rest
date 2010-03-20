@@ -30,14 +30,3 @@ class Response(object):
                 break
         else:
             self.headers.append((name, value))
-
-    def url_for(self, collection=None, action=None, **kwargs):
-        kwargs['collection'] = collection
-        kwargs['action'] = action
-        if self.environ.get('HTTPS') == 'on':
-            scheme = 'https'
-        else:
-            scheme = 'http'
-        path = mapper.url_for(**kwargs)
-        url = '%s://%s%s' % (scheme, self.environ['SERVER_NAME'], path)
-        return url
