@@ -18,7 +18,7 @@ from string import Template
 
 class Route(object):
 
-    _re_var = re.compile(':([a-z][a-z0-9_]+)|{([a-z][a-z0-9_]+)}', re.I)
+    _re_var = re.compile(':([a-z][a-z0-9_]*)|{([a-z][a-z0-9_]*)}', re.I)
 
     def __init__(self, path, method=None, **kwargs):
         self.path = path
@@ -28,13 +28,18 @@ class Route(object):
         self.pattern = '^%s$' % self._re_var.sub(self._replace_var_names,
                                                  self.path)
         self.regex = re.compile(self.pattern)
-        self.template = Template(self._re_var.sub('$\\1', self.path))
+        self.template = Template(self._re_var.sub(self._template_var_names,
+                                                  self.path))
 
     def _replace_var_names(self, mobj):
         name = mobj.group(1) or mobj.group(2)
         self.varnames.append(name)
         return '(?P<%s>[^/]+)' % name
 
+    def _template_var_names(self, mobj):
+        name = mobj.group(1) or mobj.group(2)
+        return '$%s' % name
+        
     def _match(self, url, method=None):
         mobj = self.regex.match(url)
         if not mobj:
@@ -78,9 +83,9 @@ class Mapper(object):
                 return url
 
     def methods_for(self, url):
-        methods = set()
+        methods = []
         for route in self.routes:
             match = route._match(url, method=None)
             if match and route.method:
-                methods.add(route.method)
+                methods.append(route.method)
         return methods
