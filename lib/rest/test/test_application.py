@@ -18,7 +18,7 @@ from xml.etree.ElementTree import XML, Element
 
 from rest import (Application, Collection, InputFilter, OutputFilter,
                   Error, make_server)
-from rest.api import request, response
+from rest.api import request, response, mapper
 from rest.filter import LOWER, HIGHER
 
 
@@ -59,7 +59,9 @@ class BookCollection(Collection):
 
     def create(self, input):
         self.books.append(input)
-        return input.find('./id').text
+        url = mapper.url_for(collection=self.name, action='show',
+                             id=input.find('./id').text)
+        return url
 
     def update(self, id, input):
         book = self._get_book(id)
@@ -230,7 +232,7 @@ class TestApplication(object):
         headers = { 'Content-Type': 'text/xml' }
         client.request('PUT', '/api/books/1', etree.tostring(book), headers)
         response = client.getresponse()
-        assert response.status == http.OK
+        assert response.status == http.NO_CONTENT
 
     def test_update_without_input(self):
         client = self.client

@@ -107,7 +107,7 @@ class Application(object):
 
     def load_modules(self):
         """Implement this method in a subclass to load modules."""
-        self.load_module('rest.default')
+        self.load_module('rest.defcfg')
 
     def filter_input(self, collection, action, input):
         """Filter input."""
@@ -204,7 +204,7 @@ class Application(object):
         method = getattr(collection, m['action'])
         kwargs = request.args.copy()
         for key in m:
-            if key not in ('controller', 'collection', 'action'):
+            if key not in ('collection', 'action'):
                 kwargs[key] = m[key]
         input = request.read()
         self.logger.debug('Read %d bytes of input' % len(input))
