@@ -51,12 +51,17 @@ class Route(object):
         return match
 
     def _url_for(self, **kwargs):
+        args = set(kwargs)
         for name in self.varnames:
             if name not in kwargs:
                 return
+            args.remove(name)
         for arg in self.kwargs:
             if self.kwargs[arg] != kwargs.get(arg):
                 return
+            args.remove(arg)
+        if args:
+            return
         url = self.template.substitute(kwargs)
         return url
 

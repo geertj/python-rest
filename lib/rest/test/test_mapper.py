@@ -42,8 +42,7 @@ class TestMapper(object):
         mapper.connect('/:a/:b', action='test')
         assert mapper.url_for(action='test', a='foo', b='bar') == '/foo/bar'
         assert mapper.url_for(action='tst', a='foo', b='bar') == None
-        assert mapper.url_for(action='test', key='value',a='foo', b='bar') \
-                == '/foo/bar'
+        assert mapper.url_for(action='test', a='foo', b='bar', c='baz') == None
 
     def test_methods_for(self):
         mapper = Mapper()

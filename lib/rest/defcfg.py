@@ -12,9 +12,10 @@ from rest import http
 from rest.api import request, response, mapper
 from rest.error import Error
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
+from rest.util import issequence
 
 
-class CheckMethodAllowed(InputFilter):
+class AssertMethodAllowed(InputFilter):
     """Check that the current method is allowed for the current resource."""
 
     def filter(self, input):
@@ -24,7 +25,7 @@ class CheckMethodAllowed(InputFilter):
         return input
 
 
-class CheckInputFormat(InputFilter):
+class AssertInputFormat(InputFilter):
     """Check that the request entity is of a certain MIME type."""
 
     def __init__(self, content_type):
@@ -40,7 +41,7 @@ class CheckInputFormat(InputFilter):
         return input
 
 
-class CheckRequestedOutputFormat(InputFilter):
+class AssertAcceptableOutputFormat(InputFilter):
     """Check if the encoding that the client provides as acceptable are
     availble for a certain resource."""
 
@@ -49,21 +50,31 @@ class CheckRequestedOutputFormat(InputFilter):
             content_type = [content_type]
         self.content_types = content_type
 
+    def _acceptable_content_type(self, atype):
+        atype, asubtype = atype.split('/')
+        for ctype in self.content_types:
+            type, subtype = ctype.split('/')
+            if atype == '*' or atype == type and \
+                    asubtype == '*' or asubtype == subtype:
+                return True
+        return False
+
     def filter(self, input):
         accept = request.header('Accept')
-        if accept:
-            accept = http.parse_accept(accept)
-            for type,params in accept:
-                if type in self.content_types:
-                    break
-            else:
-                reason = 'Unsupported content-type requested by client.'
-                raise Error(http.NOT_ACCEPTABLE, reason=reason)
+        if not accept:
+            return input
+        accept = http.parse_accept(accept)
+        for type,params in accept:
+            if self._acceptable_content_type(type):
+                break
+        else:
+            reason = 'Unsupported content-type requested by client.'
+            raise Error(http.NOT_ACCEPTABLE, reason=reason)
         return input
 
 
-class EnsureNoInput(InputFilter):
-    """Ensure that no entity is provided by the request."""
+class AssertNoInput(InputFilter):
+    """Assert that no entity is provided by the request."""
 
     def filter(self, input):
         if input:
@@ -72,8 +83,8 @@ class EnsureNoInput(InputFilter):
         return input
 
 
-class EnsureHasInput(InputFilter):
-    """Ensure the request contains a request entity and a content type."""
+class AssertHasInput(InputFilter):
+    """Assert the request contains a request entity and a content type."""
 
     def filter(self, input):
         if not input:
@@ -136,18 +147,28 @@ class ProcessCreateOutput(OutputFilter):
     newly created entity."""
 
     def filter(self, output):
+        if not output:
+            return output
         response.status = http.CREATED
         if isinstance(output, tuple):
-            id, object = output
-        else:
-            id, object = output, ''
-        url = mapper.url_for(collection=request.match['collection'],
-                             action='show', id=id)
+            url, object = output
+        elif output:
+            url, object = output, ''
         response.set_header('Location', url)
         # See RFC5023 section 9.2
         if object:
             response.set_header('Content-Location', url)
         return object
+
+
+class ProcessUpdateOutput(OutputFilter):
+    """For the output of the "update" action, set the status to 204 (NO
+    CONTENT) in case there is no content."""
+
+    def filter(self, output):
+        if not output:
+            response.status = http.NO_CONTENT
+        return output
 
 
 class ProcessLocationHeader(OutputFilter):
@@ -184,16 +205,14 @@ def setup_module(app):
     app.add_route('/api/:collection', action='_method_not_allowed')
     app.add_route('/api/:collection/:id', action='_method_not_allowed')
 
-    app.add_input_filter(CheckMethodAllowed())
+    app.add_input_filter(AssertMethodAllowed())
     app.add_output_filter(ProcessNoneOutput(), priority=10)
     app.add_output_filter(ProcessUnicodeOutput(), priority=90)
     app.add_output_filter(ProcessLocationHeader(), priority=90)
     app.add_exception_handler(HandleCommonExceptions())
 
-    app.add_input_filter(EnsureNoInput(), action='show')
+    app.add_input_filter(AssertNoInput(), action=['show', 'list', 'delete'])
     app.add_output_filter(ProcessEmptyOutput(), action='show')
-    app.add_input_filter(EnsureNoInput(), action='list')
-    app.add_input_filter(EnsureNoInput(), action='delete')
-    app.add_input_filter(EnsureHasInput(), action='create')
+    app.add_input_filter(AssertHasInput(), action=['create', 'update'])
     app.add_output_filter(ProcessCreateOutput(), action='create', priority=10)
-    app.add_input_filter(EnsureHasInput(), action='update')
+    app.add_output_filter(ProcessUpdateOutput(), action='update', priority=10)
