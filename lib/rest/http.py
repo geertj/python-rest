@@ -7,6 +7,7 @@
 # "AUTHORS" for a complete overview.
 
 from httplib import responses as reasons
+from httplib import HTTP_PORT as PORT, HTTPS_PORT as SSL_PORT
 from rfc822 import formatdate as format_date
 
 
