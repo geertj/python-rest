@@ -18,12 +18,14 @@ class ObjectProxy(object):
         self._register(object)
 
     def _current_object(self):
-        return self.____local__.object
+        return getattr(self.____local__, 'object', None)
 
     def _register(self, object):
         self.____local__.object = object
 
     def _release(self):
+        if not hasattr(self.____local__, 'object'):
+            return
         object = self.____local__.object
         del self.____local__.object
         return object
