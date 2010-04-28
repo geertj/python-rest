@@ -9,9 +9,8 @@
 from wsgiref.simple_server import WSGIServer, make_server as _make_server
 
 
-class PatchedWSGIServer(WSGIServer):
-    """A hacked up WSGI server that provides a .shutdown() method also in
-    Python 2.5. The standard shutdown() method appeared in 2.6."""
+class RestServer(WSGIServer):
+    """REST HTTP server."""
 
     def __init__(self, address, handler_class):
         WSGIServer.__init__(self, address, handler_class)
@@ -19,22 +18,6 @@ class PatchedWSGIServer(WSGIServer):
         self.RequestHandlerClass.log_request = lambda *args: None
         self.address = self.socket.getsockname()
 
-    if not hasattr(WSGIServer, 'shutdown'):
-
-        def serve_forever(self):
-            self._stopped = False
-            self.socket.settimeout(0.5)
-            while not self._stopped:
-                self.handle_request()
-
-        def get_request(self):
-            conn, addr = self.socket.accept()
-            conn.settimeout(None)
-            return (conn, addr)
-
-        def shutdown(self):
-            self._stopped = True
-
 
 def make_server(host, port, app):
-    return _make_server(host, port, app, PatchedWSGIServer)
+    return _make_server(host, port, app, RestServer)
