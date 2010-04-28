@@ -18,6 +18,10 @@ class RestServer(WSGIServer):
         self.RequestHandlerClass.log_request = lambda *args: None
         self.address = self.socket.getsockname()
 
+    def shutdown(self):
+        self.application.shutdown()
+        WSGIServer.shutdown(self)
+
 
 def make_server(host, port, app):
     return _make_server(host, port, app, RestServer)

@@ -236,3 +236,11 @@ class Application(object):
         status = '%s %s' % (response.status, http.reasons[response.status])
         self.start_response(status, response.headers)
         return output
+
+    def close(self):
+        """Close the connection. Called after every request."""
+
+    @classmethod
+    def shutdown(cls):
+        """Shut down the application. Called once in the life time of a
+        process."""
