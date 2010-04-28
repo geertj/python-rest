@@ -150,7 +150,8 @@ class Application(object):
         if body is None:
             body = http.reasons[status]
         headers.append(('Date', http.format_date()))
-        headers.append(('Server', '%s/%s' % (rest.name, rest.version)))
+        version = '.'.join(map(str, rest.version))
+        headers.append(('Server', 'python-rest/%s' % version))
         headers.append(('Content-Type', 'text/plain'))
         headers.append(('Content-Length', str(len(body))))
         self.start_response(statusline, headers)

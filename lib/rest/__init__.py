@@ -6,9 +6,7 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-name = 'python-rest'
-version = '0.8'
-
+from rest._version import *
 from rest.application import Application
 from rest.collection import Collection
 from rest.request import Request
