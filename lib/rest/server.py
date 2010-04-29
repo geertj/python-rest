@@ -6,7 +6,8 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-from wsgiref.simple_server import WSGIServer, make_server as _make_server
+from wsgiref.simple_server import (WSGIServer, WSGIRequestHandler,
+                                   make_server as _make_server)
 
 
 class RestServer(WSGIServer):
@@ -14,8 +15,7 @@ class RestServer(WSGIServer):
 
     def __init__(self, address, handler_class):
         WSGIServer.__init__(self, address, handler_class)
-        # Suppress logging
-        self.RequestHandlerClass.log_request = lambda *args: None
+        # Update address if we are listening on a ephemeral port.
         self.address = self.socket.getsockname()
 
     def shutdown(self):
@@ -23,5 +23,17 @@ class RestServer(WSGIServer):
         WSGIServer.shutdown(self)
 
 
+class RestRequestHandler(WSGIRequestHandler):
+
+    def address_string(self):
+        # Do not resolve DNS name of the peer during a request.
+        # This can lead to big timeouts.
+        return self.client_address[0]
+
+    def log_message(self, format, *args):
+        # No logging to standard output
+        pass
+
+
 def make_server(host, port, app):
-    return _make_server(host, port, app, RestServer)
+    return _make_server(host, port, app, RestServer, RestRequestHandler)
