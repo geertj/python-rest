@@ -18,4 +18,4 @@ class Error(Exception):
         self.status = status
         self.headers = headers
         self.body = body
-        self.reason = reason
+        self.reason = reason  # The reason is only shown in the logs

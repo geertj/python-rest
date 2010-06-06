@@ -20,6 +20,7 @@ from rest import (Application, Collection, InputFilter, OutputFilter,
                   Error, make_server)
 from rest.api import request, response, mapper
 from rest.filter import LOWER, HIGHER
+from rest.resource import Resource
 
 
 class BookCollection(Collection):
@@ -28,46 +29,39 @@ class BookCollection(Collection):
 
     def __init__(self):
         self.books = []
-        self.books.append(XML('<book><id>1</id><title>Book Number 1</title></book>'))
-        self.books.append(XML('<book><id>2</id><title>Book Number 2</title></book>'))
-        self.books.append(XML('<book><id>3</id><title>Book Number 3</title></book>'))
+        self.books.append(Resource('book', { 'id': '1', 'title': 'Book Number 1' } ))
+        self.books.append(Resource('book', { 'id': '2', 'title': 'Book Number 1' } ))
+        self.books.append(Resource('book', { 'id': '3', 'title': 'Book Number 1' } ))
 
     def _get_book(self, id):
         for book in self.books:
-            bookid = book.find('./id')
-            if bookid is not None and bookid.text == id:
+            if book['id'] == id:
                 return book
 
-    def _update_book(self, book, update):
-        for upd in update:
-            for i in range(len(book)):
-                if book[i].tag == upd.tag:
-                    book[i] = upd
-                    break
-            else:
-                book.append(upd)
-
     def show(self, id):
-        return self._get_book(id)
+        book = self._get_book(id)
+        if not book:
+            raise KeyError
+        return book
 
     def list(self, **filter):
-        elem = Element('books')
+        match = []
         for book in self.books:
-            if 'id' not in filter or book[0].text == filter['id']:
-                elem.append(book)
-        return elem
+            if 'id' not in filter or book['id'] == filter['id']:
+                match.append(book)
+        return match
 
     def create(self, input):
         self.books.append(input)
         url = mapper.url_for(collection=self.name, action='show',
-                             id=input.find('./id').text)
+                             id=input['id'])
         return url
 
     def update(self, id, input):
         book = self._get_book(id)
         if not book:
             raise KeyError
-        self._update_book(book, input)
+        book.update(input)
 
     def delete(self, id):
         book = self._get_book(id)
@@ -76,39 +70,11 @@ class BookCollection(Collection):
         self.books.remove(book)
 
 
-class XmlInput(InputFilter):
-
-    def filter(self, input):
-        if request.header('Content-Type') != 'text/xml':
-            raise Error, http.UNSUPPORTED_MEDIA_TYPE
-        try:
-            xml = etree.fromstring(input)
-        except:
-            raise Error, http.BAD_REQUEST
-        return xml
-
-
-class XmlOutput(OutputFilter):
-
-    def filter(self, output):
-        if not isinstance(output, etree._ElementInterface):
-            return
-        xml = etree.tostring(output)
-        response.set_header('Content-Type', 'text/xml')
-        return xml
-
 
 class BookApplication(Application):
 
     def setup_collections(self):
         self.add_collection(BookCollection())
-
-    def setup_filters(self):
-        super(BookApplication, self).setup_filters()
-        self.add_input_filter(XmlInput(), action='create', priority=LOWER)
-        self.add_input_filter(XmlInput(), action='update', priority=LOWER)
-        self.add_output_filter(XmlOutput(), action='show', priority=HIGHER)
-        self.add_output_filter(XmlOutput(), action='list', priority=HIGHER)
 
 
 class TestApplication(object):
@@ -144,10 +110,10 @@ class TestApplication(object):
         client.request('GET', '/api/books/1')
         response = client.getresponse()
         assert response.status == http.OK
-        assert response.getheader('Content-Type') == 'text/xml'
+        assert response.getheader('Content-Type') == 'text/xml; charset=utf-8'
         xml = etree.fromstring(response.read())
         assert etree.tostring(xml) == \
-                '<book><id>1</id><title>Book Number 1</title></book>'
+                '<book>\n  <id>1</id>\n  <title>Book Number 1</title>\n</book>'
 
     def test_show_not_found(self):
         client = self.client
@@ -166,7 +132,7 @@ class TestApplication(object):
         client.request('GET', '/api/books')
         response = client.getresponse()
         assert response.status == http.OK
-        assert response.getheader('Content-Type') == 'text/xml'
+        assert response.getheader('Content-Type') == 'text/xml; charset=utf-8'
         xml = etree.fromstring(response.read())
         assert len(xml.findall('.//id')) == 3
 
@@ -181,7 +147,7 @@ class TestApplication(object):
         client.request('GET', '/api/books?id=2')
         response = client.getresponse()
         assert response.status == http.OK
-        assert response.getheader('Content-Type') == 'text/xml'
+        assert response.getheader('Content-Type') == 'text/xml; charset=utf-8'
         xml = etree.fromstring(response.read())
         assert len(xml.findall('.//id')) == 1
 
@@ -212,7 +178,7 @@ class TestApplication(object):
         client = self.client
         client.request('DELETE', '/api/books/1')
         response = client.getresponse()
-        assert response.status == http.OK
+        assert response.status == http.NO_CONTENT
 
     def test_delete_non_existent(self):
         client = self.client
@@ -236,7 +202,8 @@ class TestApplication(object):
 
     def test_update_without_input(self):
         client = self.client
-        client.request('PUT', '/api/books/1')
+        headers = { 'Content-Type': 'text/xml' }
+        client.request('PUT', '/api/books/1', '', headers)
         response = client.getresponse()
         assert response.status == http.BAD_REQUEST
 

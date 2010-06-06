@@ -20,101 +20,167 @@ for key in reasons:
     globals()[name] = key
 
 
-def _parse_header_options(options):
-    """Parse header options. Return a list of (key, value) tuples."""
-    (s_sync, s_read_key, s_start_value, s_read_value,
-     s_read_quoted_value, s_read_quoted_value_escape) = range(6)
-    state = namedtuple('state', ('state', 'key', 'value'))
-    state.state = s_sync
+def parse_list_header(header, lower_case=False, split_content_type=False,
+                      options_as_dict=False):
+    """Parse a HTTP header into a list of (header, options) tuples, with
+    options a list of (name, value) tuples.
+    
+    This function can be used to parse parameters like "Accept,"
+    "Accept-Encoding," and "Content-Type," that have the following general
+    format:
+
+      Header Value 1; param1=value1, Header Value 2; param2=value2
+    """
+    (s_sync_header, s_read_header, s_sync_parameter, s_read_parameter,
+     s_sync_value, s_read_value, s_read_quoted_value,
+     s_read_quoted_value_escape, s_sync_header_or_parameter) = range(9)
+    state = namedtuple('state', ('state', 'header', 'parameter', 'value', 'options'))
+    state.state = s_sync_header
     result = []
-    for ch in itertools.chain(' ', options, ';'):
-        if state.state == s_sync:
-            if ch not in ' ;':
-                state.state = s_read_key
-                state.key = ch
-        elif state.state == s_read_key:
-            if ch == '=':
-                state.state = s_start_value
+    for ch in itertools.chain(' ', header, ','):
+        if state.state == s_sync_header:
+            if ch != ' ':
+                state.state = s_read_header
+                state.header = ch
+                state.options = []
+        elif state.state == s_read_header:
+            if ch == ',':
+                result.append((state.header, state.options))
+                state.state = s_sync_header
+            elif ch == ';':
+                state.state = s_sync_parameter
             else:
-                state.key += ch
-        elif state.state == s_start_value:
+                state.header += ch
+        elif state.state == s_sync_parameter:
+            if ch != ' ':
+                state.state = s_read_parameter
+                state.parameter = ch
+        elif state.state == s_read_parameter:
+            if ch == '=':
+                state.state = s_sync_value
+            else:
+                state.parameter += ch
+        elif state.state == s_sync_value:
             if ch == '"':
                 state.state = s_read_quoted_value
                 state.value = ''
-            else:
+            elif ch != ' ':
                 state.state = s_read_value
                 state.value = ch
         elif state.state == s_read_value:
-            if ch in ' ;':
-                result.append((state.key, state.value))
-                state.state = s_sync
+            if ch == ',':
+                state.options.append((state.parameter, state.value))
+                result.append((state.header, state.options))
+                state.state = s_sync_header
+            elif ch == ';':
+                state.options.append((state.parameter, state.value))
+                state.state = s_sync_parameter
             else:
                 state.value += ch
         elif state.state == s_read_quoted_value:
             if ch == '\\':
                 state.state = s_read_quoted_value_escape
             elif ch == '"':
-                result.append((state.key, state.value))
-                state.state = s_sync
+                state.options.append((state.parameter, state.value))
+                state.state = s_sync_header_or_parameter
             else:
                 state.value += ch
         elif state.state == s_read_quoted_value_escape:
             state.value += ch
             state.state = s_read_quoted_value
-    if state.state != s_sync:
-        raise ValueError, 'Illegal header options value.'
+        elif state.state == s_sync_header_or_parameter:
+            if ch == ',':
+                result.append((state.header, state.options))
+                state.state = s_sync_header
+            elif ch == ';':
+                state.state = s_sync_parameter
+            else:
+                raise ValueError, 'Could not parse HTTP header.'
+    if state.state != s_sync_header:
+        raise ValueError, 'Could not parse HTTP header.'
+    if lower_case:
+        result = [ (header.lower(), [(key.lower(), value)
+                                          for key,value in options ])
+                   for header,options in result ]
+    if options_as_dict:
+        result = [ (header, dict(options)) for header,options in result ]
+    if split_content_type:
+        result = [ tuple(header.split('/')) + (options,)
+                   for header,options in result ]
     return result
 
 
 def parse_content_type(header):
     """Parse a "Content-Type" header. Return a tuple of (type, subtype,
     options)."""
-    # RFC2045, RFC822
-    s_sync, s_read_type, s_read_subtype, s_read_options = range(4)
-    state = s_sync
-    type = subtype = options = ''
-    for ch in header:
-        if state == s_sync:
-            if ch != ' ':
-                type = ch
-                state = s_read_type
-        elif state == s_read_type:
-            if ch == '/':
-                state = s_read_subtype
-            else:
-                type += ch
-        elif state == s_read_subtype:
-            if ch == ';':
-                state = s_read_options
-            else:
-                subtype += ch
-        elif state == s_read_options:
-            options += ch
-    if state not in (s_read_subtype, s_read_options):
-        raise ValueError, 'Illegal Content-Type header.'
-    options = _parse_header_options(options)
-    return (type, subtype, options)
+    parsed = parse_list_header(header, lower_case=True,
+                               split_content_type=True, options_as_dict=True)
+    if len(parsed) != 1:
+        raise ValueError, 'Could not parse Content-Type header.'
+    return parsed[0]
 
 
-def parse_accept(accept):
-    """Parse an "Accept" header and return a list of (type, params) in
-    descending order."""
-    result = []
-    parts = accept.split(',')
-    try:
-        for index,part in enumerate(parts):
-            subparts = part.split(';')
-            fulltype = subparts[0].strip()
-            type, subtype = fulltype.split('/')
-            params = {}
-            for subpart in subparts[1:]:
-                key, value = subpart.split('=')
-                params[key.strip()] = value.strip()
-            sortkey = (-int(type == '*'), -int(subtype == '*'),
-                       -float(params.get('q', '1')), index)
-            result.append((sortkey, fulltype, params))
-    except (ValueError, TypeError):
-        raise ValueError, 'Illegal "Accept" header.'
-    result.sort()
-    result = [ (res[1], res[2]) for res in result]
-    return result
+def select_content_type(ctypes, accept_header):
+    """Select the most suitable content type from a list of supported content
+    types, based on the value of an "Accept" header.
+    """
+    # See RFC2616, section 14.1.
+    parsed = parse_list_header(accept_header,lower_case=True,
+                               split_content_type=True, options_as_dict=True)
+    candidates = []
+    for ix,ctype in enumerate(ctypes):
+        supported = parse_content_type(ctype)
+        matches = []
+        for accepted in parsed:
+            if supported[0] != accepted[0] and accepted[0] != '*':
+                continue
+            if supported[1] != accepted[1] and accepted[1] != '*':
+                continue
+            if accepted[2].has_key('q'):
+                supported[2]['q'] = accepted[2]['q']  # Ignore 'q'
+            if supported[2] != accepted[2] and accepted[2]:
+                continue
+            if accepted[0] == '*':
+                precedence = 0
+            elif accepted[1] == '*':
+                precedence = 1
+            else:
+                precedence = 2 + len(accepted[2])
+            qfactor = float(accepted[2].get('q', '1'))
+            matches.append((precedence, qfactor))
+        if not matches:
+            continue
+        matches.sort()
+        candidates.append((matches[-1][1], -ix, ctype))
+    if not candidates:
+        return
+    candidates.sort()
+    return candidates[-1][2]
+            
+
+def select_charset(charsets, accept_header):
+    """Select the most suitable charset to use from a list of supported
+    charset, based on the value of an "Accept-Charset" header.
+    """
+    # See RFC2616, section 14.2.
+    parsed = parse_list_header(accept_header, lower_case=True,
+                               options_as_dict=True)
+    non_wildcard_charsets = set()
+    for charset,options in parsed:
+        if charset != '*':
+            non_wildcard_charsets.add(charset)
+    candidates = []
+    for ix,charset in enumerate(charsets):
+        for accept,options in parsed:
+            if charset == accept or \
+                    (accept == '*' and charset not in non_wildcard_charsets):
+                qfactor = float(options.get('q', '1'))
+                candidates.append((qfactor, -ix, charset))
+                break
+        else:
+            if charset == 'iso-8859-1':
+                candidates.append((1.0, -ix, charset))
+    if not candidates:
+        return
+    candidates.sort()
+    return candidates[-1][2]
