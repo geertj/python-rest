@@ -22,13 +22,17 @@ from rest import http
 
 class Application(object):
     """A mini framework for creating RESTful APIs."""
+    
+    Request = Request
+    Response = Response
+    Mapper = Mapper
 
     def __init__(self, environ, start_response):
         """Constructor."""
         self.environ = environ
         self.start_response = start_response
         self.collections = {}
-        self.mapper = Mapper()
+        self.mapper = self.Mapper()
         self.input_filters = {}
         self.output_filters = {}
         self.exception_handlers = {}
@@ -191,8 +195,8 @@ class Application(object):
 
     def respond(self):
         """Respond to a request."""
-        request = Request(self.environ)
-        response = Response(self.environ)
+        request = self.Request(self.environ)
+        response = self.Response(self.environ)
         self.logger.debug('New request: %s %s' % (request.method, request.uri))
         m = self.mapper.match(request.path, request.method)
         if not m:
