@@ -10,150 +10,54 @@ import traceback
 
 from rest import http
 from rest.api import request, response, mapper
-from rest.error import Error
+from rest.error import Error as HTTPReturn
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
-from rest.util import issequence
+from rest.util import make_absolute
+from rest.entity import (ParseEntity, FormatEntity, FormatEntityList,
+                         TransformResource, ReverseResource,
+                         ReverseResourceList)
 
 
-class AssertMethodAllowed(InputFilter):
-    """Check that the current method is allowed for the current resource."""
+class HandleMethodNotAllowed(InputFilter):
+    """Check that the method is allowed for the requested resource."""
 
     def filter(self, input):
         if request.match.get('action') == '_method_not_allowed':
             headers = [('Allowed', ', '.join(mapper.methods_for(request.path)))]
-            raise Error(http.METHOD_NOT_ALLOWED, headers)
+            raise HTTPReturn(http.METHOD_NOT_ALLOWED, headers)
         return input
 
 
-class AssertInputFormat(InputFilter):
-    """Check that the request entity is of a certain MIME type."""
-
-    def __init__(self, content_type):
-        if not issequence(content_type):
-            content_type = [content_type]
-        self.content_types = content_type
-
-    def filter(self, input):
-        ctype = request.header('Content-Type')
-        if ctype and ctype not in self.content_types:
-            reason = 'Unsupported content-type provided by client.'
-            raise Error(http.UNSUPPORTED_MEDIA_TYPE, reason=reason)
-        return input
-
-
-class AssertAcceptableOutputFormat(InputFilter):
-    """Check if the encoding that the client provides as acceptable are
-    availble for a certain resource."""
-
-    def __init__(self, content_type):
-        if not issequence(content_type):
-            content_type = [content_type]
-        self.content_types = content_type
-
-    def _acceptable_content_type(self, atype):
-        atype, asubtype = atype.split('/')
-        for ctype in self.content_types:
-            type, subtype = ctype.split('/')
-            if atype == '*' or atype == type and \
-                    asubtype == '*' or asubtype == subtype:
-                return True
-        return False
-
-    def filter(self, input):
-        accept = request.header('Accept')
-        if not accept:
-            return input
-        accept = http.parse_accept(accept)
-        for type,params in accept:
-            if self._acceptable_content_type(type):
-                break
-        else:
-            reason = 'Unsupported content-type requested by client.'
-            raise Error(http.NOT_ACCEPTABLE, reason=reason)
-        return input
-
-
-class AssertNoInput(InputFilter):
+class EnsureNoEntity(InputFilter):
     """Assert that no entity is provided by the request."""
 
     def filter(self, input):
         if input:
             reason = 'Action does not accept any input.'
-            raise Error(http.BAD_REQUEST, reason=reason)
+            raise HTTPReturn(http.BAD_REQUEST, reason=reason)
         return input
 
 
-class AssertHasInput(InputFilter):
-    """Assert the request contains a request entity and a content type."""
-
-    def filter(self, input):
-        if not input:
-            reason = 'No input was provided.'
-            raise Error(http.BAD_REQUEST, reason=reason)
-        ctype = request.header('Content-Type')
-        if ctype is None:
-            reason = 'Content-Type header was not provided.'
-            raise Error(http.BAD_REQUEST, reason=reason)
-        return input
-
-
-class ProcessNoneOutput(OutputFilter):
-    """If the output is "None", convert it to an empty string ("")."""
-
-    def filter(self, output):
-        if output is None:
-            output = ''
-        return output
-
-
-class ProcessUnicodeOutput(OutputFilter):
-    """If the output is unicode, encode it as UTF-8 and set the correct
-    encoding on the response."""
-
-    def filter(self, output):
-        if isinstance(output, unicode):
-            output = output.encode('utf-8')
-            ctype = response.header('Content-Type')
-            response.set_header(ctype, '%s; charset=UTF-8' % ctype)
-        return output
-
-
-class ProcessEmptyOutput(OutputFilter):
-    """In case of no output, raise a 404 (NOT_FOUND) HTTP error."""
-
-    def filter(self, output):
-        if not output:
-            raise Error(http.NOT_FOUND, reason='resource not found')
-        return output
-
-
-class HandleCommonExceptions(ExceptionHandler):
-    """Handle common exceptions. KeyError is mapped to 404 (NOT_FOUND), other
-    exceptions are mapped to 400 (BAD_REQUEST)."""
+class HandleKeyError(ExceptionHandler):
+    """KeyError -> 404 NOT FOUND"""
 
     def handle(self, exception):
-        if isinstance(exception, TypeError) \
-                or isinstance(exception, ValueError):
-            return Error(http.BAD_REQUEST, reason=str(exception))
-        elif isinstance(exception, KeyError):
-            return Error(http.NOT_FOUND, reason=str(exception))
-        exception.traceback = traceback.format_exc()
-        return exception
+        if isinstance(exception, KeyError):
+            raise HTTPReturn, http.NOT_FOUND
 
 
-class ProcessCreateOutput(OutputFilter):
+class HandleCreateOutput(OutputFilter):
     """For the output of the "create" action, set the status to 201
     (CREATED), and add a "Location" header with the correct location of the
     newly created entity."""
 
     def filter(self, output):
-        if not output:
-            return output
         response.status = http.CREATED
         if isinstance(output, tuple):
             url, object = output
         elif output:
-            url, object = output, ''
+            url, object = output, None
+        url = make_absolute(url)
         response.set_header('Location', url)
         # See RFC5023 section 9.2
         if object:
@@ -161,39 +65,25 @@ class ProcessCreateOutput(OutputFilter):
         return object
 
 
-class ProcessUpdateOutput(OutputFilter):
+class HandleUpdateOutput(OutputFilter):
     """For the output of the "update" action, set the status to 204 (NO
     CONTENT) in case there is no content."""
 
     def filter(self, output):
         if not output:
             response.status = http.NO_CONTENT
+            return ''
         return output
 
 
-class ProcessLocationHeader(OutputFilter):
-    """Make the "Location" and "Content-Location" headers on the HTTP response
-    absolute URLs. RFC2616 requires that "Location" is an aboslute URL."""
-
-    def _make_absolute(self, relurl):
-        url = 'https://' if request.secure else 'http://'
-        url += request.server
-        if request.secure and request.port != 443 or \
-                not request.secure and request.port != 80:
-            url += ':%s' % request.port
-        url += relurl
-        return url
+class HandleDeleteOutput(OutputFilter):
 
     def filter(self, output):
-        location = response.header('Location')
-        if location and not location.startswith('http'):
-            url = self._make_absolute(location)
-            response.set_header('Location', url)
-        location = response.header('Content-Location')
-        if location and not location.startswith('http'):
-            url = self._make_absolute(location)
-            response.set_header('Content-Location', url)
-        return output
+        if output:
+            raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
+                    reason='Not expecting any output for this action')
+        response.status = http.NO_CONTENT
+        return ''
 
 
 def setup_module(app):
@@ -205,14 +95,30 @@ def setup_module(app):
     app.add_route('/api/:collection', action='_method_not_allowed')
     app.add_route('/api/:collection/:id', action='_method_not_allowed')
 
-    app.add_input_filter(AssertMethodAllowed())
-    app.add_output_filter(ProcessNoneOutput(), priority=10)
-    app.add_output_filter(ProcessUnicodeOutput(), priority=90)
-    app.add_output_filter(ProcessLocationHeader(), priority=90)
-    app.add_exception_handler(HandleCommonExceptions())
+    app.add_input_filter(HandleMethodNotAllowed(), priority=10)
 
-    app.add_input_filter(AssertNoInput(), action=['show', 'list', 'delete'])
-    app.add_output_filter(ProcessEmptyOutput(), action='show')
-    app.add_input_filter(AssertHasInput(), action=['create', 'update'])
-    app.add_output_filter(ProcessCreateOutput(), action='create', priority=10)
-    app.add_output_filter(ProcessUpdateOutput(), action='update', priority=10)
+    app.add_input_filter(EnsureNoEntity(), action='list')
+    app.add_output_filter(ReverseResourceList(), action='list')
+    app.add_output_filter(FormatEntityList(), action='list')
+
+    app.add_input_filter(EnsureNoEntity(), action='show')
+    app.add_output_filter(ReverseResource(), action='show')
+    app.add_output_filter(FormatEntity(), action='show')
+    app.add_exception_handler(HandleKeyError(), action='show')
+
+    app.add_input_filter(ParseEntity(), action='create')
+    app.add_input_filter(TransformResource(), action='create')
+    app.add_output_filter(HandleCreateOutput(), action='create')
+    app.add_output_filter(ReverseResource(), action='create')
+    app.add_output_filter(FormatEntity(), action='create')
+
+    app.add_input_filter(EnsureNoEntity(), action='delete')
+    app.add_output_filter(HandleDeleteOutput(), action='delete')
+    app.add_exception_handler(HandleKeyError(), action='delete')
+
+    app.add_input_filter(ParseEntity(), action='update')
+    app.add_input_filter(TransformResource(), action='update')
+    app.add_output_filter(HandleUpdateOutput(), action='update')
+    app.add_output_filter(ReverseResource(), action='update')
+    app.add_output_filter(FormatEntity(), action='update')
+    app.add_exception_handler(HandleKeyError(), action='update')
