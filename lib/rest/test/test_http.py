@@ -7,74 +7,60 @@
 # "AUTHORS" for a complete overview.
 
 from rest.http import *
+from rest.http import _parse_parameterized_list
 from nose.tools import assert_raises
 
 
-class TestParseListHeader(object):
+class TestParseParameterizedList(object):
 
     def test_simple(self):
         header = 'text/html'
         parsed = [('text/html', [])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_parameter(self):
         header = 'text/html; charset=utf8'
         parsed = [('text/html', [('charset', 'utf8')])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_multiple_parameters(self):
         header = 'text/html; charset=utf8; level=1'
         parsed = [('text/html', [('charset', 'utf8'), ('level', '1')])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_multiple_headers(self):
         header = 'text/html, text/plain'
         parsed = [('text/html', []), ('text/plain', [])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_multiple_headers_multiple_parameters(self):
         header = 'text/html; charset=utf8; level=1,' \
                  ' text/plain; charset=us-ascii; level=2'
         parsed = [('text/html', [('charset', 'utf8'), ('level', '1')]),
                   ('text/plain', [('charset', 'us-ascii'), ('level', '2')])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_quoted_parameter(self):
         header = 'text/html; charset="utf 8"'
         parsed = [('text/html', [('charset', 'utf 8')])]
-        assert parse_list_header(header) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_quoted_parameter_with_escape(self):
         header = r'text/html; charset="utf\"8"'
         parsed = [('text/html', [('charset', 'utf"8')])]
-        assert parse_list_header(header) == parsed
-
-    def test_split_content_type(self):
-        header = 'text/html; charset=utf8'
-        parsed = [('text', 'html', [('charset', 'utf8')])]
-        assert parse_list_header(header, split_content_type=True) == parsed
-
-    def test_lower_case(self):
-        header = 'Text/Html; Charset=Utf8'
-        parsed = [('text/html', [('charset', 'Utf8')])]
-        assert parse_list_header(header, lower_case=True) == parsed
-
-    def test_options_as_dict(self):
-        header = 'text/html; charset=utf8'
-        parsed = [('text/html', {'charset': 'utf8'})]
-        assert parse_list_header(header, options_as_dict=True) == parsed
+        assert _parse_parameterized_list(header) == parsed
 
     def test_error_missing_quote(self):
         header = 'text/html; charset="utf8'
-        assert_raises(ValueError, parse_list_header, header)
+        assert_raises(ValueError, _parse_parameterized_list, header)
 
     def test_error_missing_parameter(self):
         header = 'text/html; =utf8'
-        assert_raises(ValueError, parse_list_header, header)
+        assert_raises(ValueError, _parse_parameterized_list, header)
 
     def test_error_missing_value(self):
         header = 'text/html; charset='
-        assert_raises(ValueError, parse_list_header, header)
+        assert_raises(ValueError, _parse_parameterized_list, header)
 
 
 class TestParseContentType(object):
@@ -92,6 +78,11 @@ class TestParseContentType(object):
     def test_multiple_options(self):
         ctype = 'text/html; charset=utf8; foo=bar'
         parsed = ('text', 'html', {'charset': 'utf8', 'foo': 'bar'})
+        assert parse_content_type(ctype) == parsed
+
+    def test_lower_case(self):
+        ctype = 'Text/Html; Charset=Utf8; Foo=Bar'
+        parsed = ('text', 'html', {'charset': 'Utf8', 'foo': 'Bar'})
         assert parse_content_type(ctype) == parsed
 
 
