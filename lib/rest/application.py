@@ -226,7 +226,7 @@ class Application(object):
                 if exception:
                     raise exception
             finally:
-                collection.close()
+                collection.teardown()
             self.logger.debug('Running output filters')
             output = self.filter_output(m['collection'], m['action'], output)
         finally:
