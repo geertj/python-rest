@@ -93,3 +93,15 @@ class Request(object):
         data = input.read(size)
         self.bytes_read += len(data)
         return data
+
+    def preferred_content_type(self, content_types):
+        """From a list of content types, select the one that is preferred by
+        the client based on the value of the "Accept" header."""
+        accept_header = self.header('Accept', '*/*')
+        return http.select_content_type(content_types, accept_header)
+
+    def preferred_charset(self, charsets):
+        """From a list of character sets, select the one that is preferred by
+        the client based on the value of the "Accept-Charset" header."""
+        accept_header = self.header('Accept-Charset', '*')
+        return http.select_content_type(charsets, accept_header)
