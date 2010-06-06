@@ -24,5 +24,5 @@ class Collection(object):
     def setup(self):
         """Called just before a request method is called."""
 
-    def close(self):
+    def teardown(self):
         """Called after a request has been finished."""
