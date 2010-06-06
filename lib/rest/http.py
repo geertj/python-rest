@@ -20,10 +20,9 @@ for key in reasons:
     globals()[name] = key
 
 
-def parse_list_header(header, lower_case=False, split_content_type=False,
-                      options_as_dict=False):
-    """Parse a HTTP header into a list of (header, options) tuples, with
-    options a list of (name, value) tuples.
+def _parse_parameterized_list(header):
+    """Parse a "parameterized list" HTTP header into a list of
+    (header, options) tuples, with options a list of (name, value) tuples.
     
     This function can be used to parse parameters like "Accept,"
     "Accept-Encoding," and "Content-Type," that have the following general
@@ -98,26 +97,22 @@ def parse_list_header(header, lower_case=False, split_content_type=False,
                 raise ValueError, 'Could not parse HTTP header.'
     if state.state != s_sync_header:
         raise ValueError, 'Could not parse HTTP header.'
-    if lower_case:
-        result = [ (header.lower(), [(key.lower(), value)
-                                          for key,value in options ])
-                   for header,options in result ]
-    if options_as_dict:
-        result = [ (header, dict(options)) for header,options in result ]
-    if split_content_type:
-        result = [ tuple(header.split('/')) + (options,)
-                   for header,options in result ]
     return result
 
 
 def parse_content_type(header):
     """Parse a "Content-Type" header. Return a tuple of (type, subtype,
     options)."""
-    parsed = parse_list_header(header, lower_case=True,
-                               split_content_type=True, options_as_dict=True)
+    parsed = _parse_parameterized_list(header)
     if len(parsed) != 1:
-        raise ValueError, 'Could not parse Content-Type header.'
-    return parsed[0]
+        raise ValueError, 'Could not parse Content-Type header'
+    header, options = parsed[0]
+    try:
+        type, subtype = header.split('/')
+    except ValueError:
+        raise ValueError, 'Could not parse Content-Type header'
+    options = dict(((key.lower(), value) for key,value in options))
+    return (type.lower(), subtype.lower(), options)
 
 
 def select_content_type(ctypes, accept_header):
@@ -125,13 +120,20 @@ def select_content_type(ctypes, accept_header):
     types, based on the value of an "Accept" header.
     """
     # See RFC2616, section 14.1.
-    parsed = parse_list_header(accept_header,lower_case=True,
-                               split_content_type=True, options_as_dict=True)
+    parsed = _parse_parameterized_list(accept_header)
+    accept_header = []
+    for header,options in parsed:
+        try:
+            type, subtype = header.split('/')
+        except ValueError:
+            raise ValueError, 'Could not parse Content-Type header'
+        options = dict(((key.lower(), value) for key,value in options))
+        accept_header.append((type.lower(), subtype.lower(), options))
     candidates = []
     for ix,ctype in enumerate(ctypes):
         supported = parse_content_type(ctype)
         matches = []
-        for accepted in parsed:
+        for accepted in accept_header:
             if supported[0] != accepted[0] and accepted[0] != '*':
                 continue
             if supported[1] != accepted[1] and accepted[1] != '*':
@@ -163,15 +165,18 @@ def select_charset(charsets, accept_header):
     charset, based on the value of an "Accept-Charset" header.
     """
     # See RFC2616, section 14.2.
-    parsed = parse_list_header(accept_header, lower_case=True,
-                               options_as_dict=True)
+    parsed = _parse_parameterized_list(accept_header)
+    accept_header = []
+    for header,options in parsed:
+        options = dict(((key.lower(), value) for key,value in options))
+        accept_header.append((header.lower(), options))
     non_wildcard_charsets = set()
-    for charset,options in parsed:
+    for charset,options in accept_header:
         if charset != '*':
             non_wildcard_charsets.add(charset)
     candidates = []
     for ix,charset in enumerate(charsets):
-        for accept,options in parsed:
+        for accept,options in accept_header:
             if charset == accept or \
                     (accept == '*' and charset not in non_wildcard_charsets):
                 qfactor = float(options.get('q', '1'))
