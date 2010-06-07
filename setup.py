@@ -66,6 +66,8 @@ setup(
     package_dir = {'': 'lib'},
     packages = ['rest', 'rest.test'],
     test_suite = 'nose.collector',
+    entry_points = { 'console_scripts': [
+            'python-rest-cmdline = rest.server:main' ] },
     cmdclass = { 'build': mybuild },
     **version_info
 )
