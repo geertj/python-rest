@@ -152,7 +152,7 @@ class Application(object):
         if headers is None:
             headers = []
         if body is None:
-            body = http.reasons[status]
+            body = '%s\n' % http.reasons[status]
         headers.append(('Date', http.format_date()))
         version = '.'.join(map(str, rest.version))
         headers.append(('Server', 'python-rest/%s' % version))
