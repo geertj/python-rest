@@ -7,6 +7,8 @@
 # "AUTHORS" for a complete overview.
 
 import re
+import sys
+import os.path
 from optparse import OptionParser
 from wsgiref.simple_server import (WSGIServer, WSGIRequestHandler,
                                    make_server as _make_server)
@@ -47,10 +49,17 @@ def make_server(host, port, app):
     return _make_server(host, port, app, RestServer, RestRequestHandler)
 
 
+def program_name():
+    name = sys.argv[0]
+    name = name.replace('-script.py', '')
+    dummy, name = os.path.split(name)
+    return name
+
+
 def main():
     """Command-line integration. Start up the API based on the built-in
     wsgiref web server."""
-    parser = OptionParser()
+    parser = OptionParser(prog=program_name())
     parser.add_option('-l', '--listen', dest='listen',
                       help='listen on interface:port')
     parser.add_option('-m', '--module', dest='module',
