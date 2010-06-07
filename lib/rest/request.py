@@ -9,6 +9,8 @@
 import binascii
 from cgi import parse_qs
 
+from rest import http
+from rest.error import Error as HTTPReturn
 
 class Request(object):
     """HTTP Request"""
@@ -48,25 +50,7 @@ class Request(object):
             pass
         self.username = username
         self.password = password
-        # The handling of Content-Length is a bit complex. Not all WSGI
-        # servers will generate an EOF when reading past the end of the
-        # request body. Unfortunately PEP-333 allows this behavior.
-        # Therefore we should not read past Content-Length.  An absent
-        # Content-Length header does not necessarily mean that there's
-        # no request body though, e.g. when using chunked encoding.  See
-        # section 4.4 of RFC1616.
-        try:
-            clen = int(self.header('Content-Length'))
-        except (TypeError, ValueError):
-            clen = None
-        if clen is None:
-            encoding = self.header('Transfer-Encoding', 'identity')
-            if encoding != 'identity':
-                self.content_length = None
-            else:
-                self.content_length = 0
-        else:
-            self.content_length = clen
+        self.content_length = None
         self.bytes_read = 0
 
     def header(self, name, default=None):
@@ -85,10 +69,18 @@ class Request(object):
 
     def read(self, size=None):
         """Read from the request."""
-        if self.content_length is not None:
-            bytes_left = self.content_length - self.bytes_read 
-            if size is None or size > bytes_left:
-                size = bytes_left
+        if self.content_length is None:
+            encoding = self.header('Transfer-Encoding', 'identity')
+            if encoding != 'identity':
+                raise HTTPReturn(http.NOT_IMPLEMENTED,
+                        reason='Unsupported transfer encoding [%s]' % encoding)
+            self.content_length = int(self.header('Content-Length', '0'))
+        # Make sure we never attempt to read beyond Content-Length, as some
+        # WSGI servers will block instead of returning EOF (which is allowed
+        # by PEP-333).
+        bytes_left = self.content_length - self.bytes_read 
+        if size is None or size > bytes_left:
+            size = bytes_left
         input = self.environ['wsgi.input']
         data = input.read(size)
         self.bytes_read += len(data)
