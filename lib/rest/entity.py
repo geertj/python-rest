@@ -258,7 +258,7 @@ class TransformResource(InputFilter):
         rules = getattr(collection, 'entity_transform', None)
         if not rules:
             return input
-        proc = ArgumentProcessor()
+        proc = ArgumentProcessor(namespace=collection._get_namespace())
         proc.rules(rules)
         transformed = proc.process(input)
         return transformed
@@ -271,7 +271,7 @@ class ReverseResource(OutputFilter):
         rules = getattr(collection, 'entity_transform', None)
         if not rules:
             return output
-        proc = ArgumentProcessor()
+        proc = ArgumentProcessor(namespace=collection._get_namespace())
         proc.rules(rules)
         transformed = proc.process_reverse(output)
         return transformed
@@ -285,7 +285,7 @@ class ReverseResourceList(OutputFilter):
         rules = getattr(collection, 'entity_transform', None)
         if not rules:
             return output
-        proc = ArgumentProcessor()
+        proc = ArgumentProcessor(namespace=collection._get_namespace())
         proc.rules(rules)
         output = map(proc.process_reverse, output)
         return output

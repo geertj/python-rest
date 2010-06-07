@@ -26,3 +26,7 @@ class Collection(object):
 
     def teardown(self):
         """Called after a request has been finished."""
+
+    def _get_namespace(self):
+        """Return the global namespace of this collection."""
+        return globals()
