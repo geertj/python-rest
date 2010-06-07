@@ -6,6 +6,8 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
+import inspect
+
 
 class Collection(object):
     """A RESTful collection.
@@ -29,4 +31,5 @@ class Collection(object):
 
     def _get_namespace(self):
         """Return the global namespace of this collection."""
-        return globals()
+        module = inspect.getmodule(self)
+        return module.__dict__
