@@ -68,6 +68,7 @@ setup(
     test_suite = 'nose.collector',
     entry_points = { 'console_scripts': [
             'python-rest-cmdline = rest.server:main' ] },
+    install_requires = ['argproc >= 1.2'],
     cmdclass = { 'build': mybuild },
     **version_info
 )
