@@ -14,7 +14,7 @@ class Error(Exception):
     response will be made by the framework.
     """
 
-    def __init__(self, status, headers=[], body='', reason=None):
+    def __init__(self, status, headers=[], body=None, reason=None):
         self.status = status
         self.headers = headers
         self.body = body
