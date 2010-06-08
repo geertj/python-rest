@@ -52,7 +52,9 @@ class HandleCreateOutput(OutputFilter):
     newly created entity."""
 
     def filter(self, output):
-        response.status = http.CREATED
+        # XXX: need to distinghuish between "OK" and "not set".
+        if response.status == http.OK:
+            response.status = http.CREATED
         if isinstance(output, tuple):
             url, object = output
         elif output:
