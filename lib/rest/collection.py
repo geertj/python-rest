@@ -7,6 +7,7 @@
 # "AUTHORS" for a complete overview.
 
 import inspect
+from rest.api import request
 
 
 class Collection(object):
@@ -33,3 +34,9 @@ class Collection(object):
         """Return the global namespace of this collection."""
         module = inspect.getmodule(self)
         return module.__dict__
+
+    def _get_tags(self):
+        """Return the tags that are in effect for the argument processing rules
+        of this collection."""
+        tags = [request.match['action']]
+        return tags
