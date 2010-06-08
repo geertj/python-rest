@@ -94,9 +94,7 @@ class ParseEntity(InputFilter):
         else:
             preamble = ''
         root = etree.fromstring(preamble + input)
-        hints = getattr(collection, 'parse_hints', {})
-        if hints:
-            hints = self._parse_hints(hints)
+        hints = self._parse_hints(collection.parse_hints or '')
         resource = self._convert_xml_node(root, '', hints)
         return resource
 
@@ -258,12 +256,13 @@ class TransformResource(InputFilter):
     """Transform a Resource from its external to its internal representation."""
 
     def filter(self, input):
-        rules = getattr(collection, 'entity_transform', None)
+        rules = collection.entity_transform
         if not rules:
             return input
         proc = ArgumentProcessor(namespace=collection._get_namespace())
         proc.rules(rules)
-        transformed = proc.process(input)
+        tags = collection._get_tags()
+        transformed = proc.process(input, tags=tags)
         return transformed
 
 
@@ -271,7 +270,7 @@ class ReverseResource(OutputFilter):
     """Transform a Resource from its internal to its external representation."""
 
     def filter(self, output):
-        rules = getattr(collection, 'entity_transform', None)
+        rules = collection.entity_transform
         if not rules:
             return output
         proc = ArgumentProcessor(namespace=collection._get_namespace())
@@ -285,7 +284,7 @@ class ReverseResourceList(OutputFilter):
     external representation."""
 
     def filter(self, output):
-        rules = getattr(collection, 'entity_transform', None)
+        rules = collection.entity_transform
         if not rules:
             return output
         proc = ArgumentProcessor(namespace=collection._get_namespace())
