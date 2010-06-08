@@ -173,6 +173,8 @@ class FormatEntity(OutputFilter):
         elif isinstance(value, basestring):
             node = Element(type)
             node.text = value
+        elif value is None:
+            node = Element(type)
         else:
             node = Element(type)
             node.text = str(value)
