@@ -18,6 +18,8 @@ class Collection(object):
     """
 
     name = None
+    parse_hints = None
+    entity_transform = None
 
     def _method_not_allowed(self):
         """INTERNAL: placeholder for a method that is called with the wrong
