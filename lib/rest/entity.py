@@ -169,7 +169,7 @@ class FormatEntity(OutputFilter):
             node = Element(type)
             for elem in value:
                 child = self._format_xml_resource(elem, None)
-                if not child:
+                if child is None:
                     continue
                 node.append(child)
         elif isinstance(value, basestring):
