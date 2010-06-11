@@ -14,7 +14,7 @@ from StringIO import StringIO
 
 from argproc import ArgumentProcessor
 from rest import http
-from rest.api import request, response, collection
+from rest.api import request, response, collection, application
 from rest.error import Error as HTTPReturn
 from rest.filter import InputFilter, OutputFilter
 from rest.resource import Resource
@@ -244,42 +244,62 @@ class FormatEntity(OutputFilter):
         return stream.getvalue()
 
 
-class TransformResource(InputFilter):
-    """Transform a Resource from its external to its internal representation."""
+class TransformBase(InputFilter):
+
+    def __init__(self):
+        self._cache = {}
+
+    def _get_transform(self, resource):
+        try:
+            return self._cache[resource['!type']]
+        except KeyError:
+            pass
+        for coll in application.collections.values():
+            if coll.contains == resource['!type']:
+                collection = coll
+                break
+        else:
+            collection = None
+        if collection and collection.entity_transform:
+            namespace = collection._get_namespace()
+            tags = collection._get_tags()
+            proc = ArgumentProcessor(namespace=namespace, tags=tags)
+            proc.rules(collection.entity_transform)
+        else:
+            proc = None
+        self._cache[resource['!type']] = proc
+        return proc
+
+    def _transform(self, xform, resource):
+        raise NotImplementedError
+
+    def transform(self, resource):
+        if isinstance(resource, dict):
+            for key,value in resource.items():
+                resource[key] = self.transform(value)
+            xform = self._get_transform(resource)
+            if xform:
+                resource = self._transform(xform, resource)
+        elif isinstance(resource, list):
+            for ix,elem in enumerate(resource):
+                resource[ix] = self.transform(resource[ix])
+        return resource
 
     def filter(self, input):
-        rules = collection.entity_transform
-        if not rules:
-            return input
-        proc = ArgumentProcessor(namespace=collection._get_namespace())
-        proc.rules(rules)
-        tags = collection._get_tags()
-        transformed = proc.process(input, tags=tags)
-        return transformed
+        if isinstance(input, dict) or isinstance(input, list):
+            input = self.transform(input)
+        return input
 
 
-class ReverseResource(OutputFilter):
+class TransformResource(TransformBase):
+    """Transform a Resource from its external to its internal representation."""
+
+    def _transform(self, xform, resource):
+        return xform.process(resource)
+
+
+class ReverseResource(TransformBase):
     """Transform a Resource from its internal to its external representation."""
 
-    def filter(self, output):
-        rules = collection.entity_transform
-        if not rules:
-            return output
-        proc = ArgumentProcessor(namespace=collection._get_namespace())
-        proc.rules(rules)
-        transformed = proc.process_reverse(output)
-        return transformed
-
-
-class ReverseResourceList(OutputFilter):
-    """Transform a list of Resource objects from their internal to their
-    external representation."""
-
-    def filter(self, output):
-        rules = collection.entity_transform
-        if not rules:
-            return output
-        proc = ArgumentProcessor(namespace=collection._get_namespace())
-        proc.rules(rules)
-        output = map(proc.process_reverse, output)
-        return output
+    def _transform(self, xform, resource):
+        return xform.process_reverse(resource)

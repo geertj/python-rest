@@ -69,7 +69,7 @@ setup(
     entry_points = { 'console_scripts': [
             'python-rest-cmdline = rest.server:main',
             'python-rest-isapi = rest.msiis:main' ] },
-    install_requires = ['argproc >= 1.2'],
+    install_requires = ['argproc >= 1.3'],
     cmdclass = { 'build': mybuild },
     **version_info
 )
