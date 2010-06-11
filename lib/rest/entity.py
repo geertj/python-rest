@@ -142,11 +142,15 @@ class FormatEntity(OutputFilter):
         if not charset:
             raise HTTPReturn(http.NOT_ACCEPTABLE,
                     reason='No acceptable charset [%s]' % accept)
-        response.set_header('Content-Type', '%s; charset=%s' % (ctype, charset))
-        if ctype == 'text/yaml':
+        btype = '/'.join(http.parse_content_type(ctype)[:2])
+        if btype == 'text/yaml':
             output = self._format_yaml(output, charset)
-        elif ctype == 'text/xml':
+        elif btype == 'text/xml':
             output = self._format_xml(output, charset)
+        else:
+            raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
+                             reason='Cannot convert to %s' % ctype)
+        response.set_header('Content-Type', '%s; charset=%s' % (ctype, charset))
         return output
 
     def _format_xml_resource(self, value, type=None):
