@@ -46,6 +46,7 @@ class HandleKeyError(ExceptionHandler):
     def handle(self, exception):
         if isinstance(exception, KeyError):
             raise HTTPReturn, http.NOT_FOUND
+        return exception
 
 
 class HandleCreateOutput(OutputFilter):
