@@ -222,26 +222,23 @@ class Application(object):
         input = request.read()
         self.logger.debug('Read %d bytes of input' % len(input))
         self.register_globals(collection, request, response)
+        collection.setup()
         try:
             self.logger.debug('Running input filters')
             input = self.filter_input(m['collection'], m['action'], input)
             if input:
                 kwargs['input'] = input
-            output = None
-            collection.setup()
-            try:
-                output = method(**kwargs)
-            except Exception, exception:
-                self.logger.debug('Exception occurred, running handlers.')
-                exception = self.handle_exception(m['collection'], m['action'],
-                                                  exception)
-                if exception:
-                    raise exception
-            finally:
-                collection.teardown()
+            output = method(**kwargs)
             self.logger.debug('Running output filters')
             output = self.filter_output(m['collection'], m['action'], output)
+        except Exception, exception:
+            self.logger.debug('Exception occurred, running handlers.')
+            exception = self.handle_exception(m['collection'], m['action'],
+                                              exception)
+            if exception:
+                raise exception
         finally:
+            collection.teardown()
             self.release_globals()
         self.logger.debug('Response: %s (%s; %d bytes)' %
                      (response.status, response.header('Content-Type'),
