@@ -153,11 +153,19 @@ class Application(object):
             headers = []
         if body is None:
             body = '%s\n' % http.reasons[status]
-        headers.append(('Date', http.format_date()))
-        version = '.'.join(map(str, rest.version))
-        headers.append(('Server', 'python-rest/%s' % version))
-        headers.append(('Content-Type', 'text/plain'))
-        headers.append(('Content-Length', str(len(body))))
+            headers.append(('Content-Type', 'text/plain'))
+        def has_header(name, headers):
+            for key,value in headers:
+                if key.lower() == name.lower():
+                    return True
+            return False
+        if not has_header('Date', headers):
+            headers.append(('Date', http.format_date()))
+        if not has_header('Server', headers):
+            version = '.'.join(map(str, rest.version))
+            headers.append(('Server', 'python-rest/%s' % version))
+        if not has_header('Content-Length', headers):
+            headers.append(('Content-Length', str(len(body))))
         self.start_response(statusline, headers)
         return body
 
