@@ -18,6 +18,7 @@ class Collection(object):
     """
 
     name = None
+    contains = None
     parse_hints = None
     entity_transform = None
 
