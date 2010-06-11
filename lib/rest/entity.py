@@ -231,6 +231,7 @@ class FormatEntity(OutputFilter):
         dumper = yaml.Dumper(stream, default_flow_style=False, version=(1,1),
                              encoding=encoding)
         dumper.add_representer(dict, self._represent_yaml_resource(dumper))
+        dumper.add_representer(Resource, self._represent_yaml_resource(dumper))
         dumper.open()
         try:
             dumper.represent(output)
