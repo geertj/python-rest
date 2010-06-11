@@ -130,11 +130,13 @@ class FormatEntity(OutputFilter):
     def filter(self, output):
         if not output:
             return ''
-        accept = request.header('Accept', '*/*')
-        ctype = http.select_content_type(('text/xml', 'text/yaml'), accept)
-        if not ctype:
-            raise HTTPReturn(http.NOT_ACCEPTABLE,
-                    reason='No acceptable content-type [%s]' % accept)
+        ctype = response.header('Content-Type')
+        if ctype is None:
+            accept = request.header('Accept', '*/*')
+            ctype = http.select_content_type(('text/xml', 'text/yaml'), accept)
+            if not ctype:
+                raise HTTPReturn(http.NOT_ACCEPTABLE,
+                        reason='No acceptable content-type [%s]' % accept)
         accept = request.header('Accept-Charset', '*')
         charset = http.select_charset(('utf-8',), accept)
         if not charset:
