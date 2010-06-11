@@ -119,8 +119,6 @@ class ParseEntity(InputFilter):
             parsed = loader.get_single_data()
         except YAMLError, e:
             raise HTTPReturn(http.BAD_REQUEST, reason='YAML: %s' % str(e))
-        if not isinstance(parsed, dict):
-            raise HTTPReturn(http.BAD_REQUEST, reason='Expecting YAML dict')
         return parsed
 
 
@@ -203,7 +201,14 @@ class FormatEntity(OutputFilter):
     def _format_xml(self, output, encoding):
         """Convert the resource `output' into XML under the specified
         encoding."""
-        root = self._format_xml_resource(output)
+        if isinstance(output, dict):
+            root = self._format_xml_resource(output)
+        elif isinstance(output, list):
+            root = Element(collection.name)
+            for elem in output:
+                child = self._format_xml_resource(elem)
+                if child:
+                    root.append(child)
         self._indent_xml(root, 0)
         output = '<?xml version="1.0" encoding="%s" ?>\n' % encoding
         output += etree.tostring(root, encoding=encoding)
@@ -237,28 +242,6 @@ class FormatEntity(OutputFilter):
                              reason='YAML dump error: %s' % str(e))
         dumper.close()
         return stream.getvalue()
-
-
-class FormatEntityList(FormatEntity):
-
-    def _check_output(self, output):
-        if not isinstance(output, list):
-            raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
-                             reason='Expecting list of Resource')
-        for elem in output:
-            if not isinstance(elem, dict):
-                raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
-                                 reason='Expecting list of Resource')
-
-    def _format_xml(self, output, encoding):
-        root = Element(collection.name)
-        for elem in output:
-            child = self._format_xml_resource(elem)
-            root.append(child)
-        self._indent_xml(root, 0)
-        output = '<?xml version="1.0" encoding="%s" ?>\n' % encoding
-        output += etree.tostring(root, encoding=encoding)
-        return output
 
 
 class TransformResource(InputFilter):
