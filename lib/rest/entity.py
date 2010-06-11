@@ -219,12 +219,9 @@ class FormatEntity(OutputFilter):
         def format(self, data):
             if '!type' in data:
                 data = data.copy()
-                data.pop('!type')
-            # XXX: for now do not output tags in YAML but if possible i'd like
-            # to re-instate this if it appears that YAML parsers can handle
-            # unknown tags reasonably well (PyYAML doesnt'...)
-            #tag = '!%s' % data.pop('!type')
-            tag = u'tag:yaml.org,2002:map'
+                tag = '!%s' % data.pop('!type')
+            else:
+                tag = u'tag:yaml.org,2002:map'
             return loader.represent_mapping(tag, data)
         return format
 
