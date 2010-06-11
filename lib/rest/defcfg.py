@@ -8,6 +8,7 @@
 
 import traceback
 
+from argproc import Error as ArgProcError
 from rest import http
 from rest.api import request, response, mapper
 from rest.error import Error as HTTPReturn
@@ -16,6 +17,7 @@ from rest.util import make_absolute
 from rest.entity import (ParseEntity, FormatEntity, FormatEntityList,
                          TransformResource, ReverseResource,
                          ReverseResourceList)
+from rest.resource import Resource
 
 
 class HandleMethodNotAllowed(InputFilter):
@@ -88,6 +90,21 @@ class HandleDeleteOutput(OutputFilter):
         return ''
 
 
+class HandleArgProcError(ExceptionHandler):
+    """Handle an ArgProc error -> 400 BAD REQUEST."""
+
+    def handle(self, exception):
+        if not isinstance(exception, ArgProcError):
+            return exception
+        format = FormatEntity()
+        error = Resource('error')
+        error['id'] = 'rest.entity_error'
+        error['message'] = str(exception)
+        body = format.filter(error)
+        headers = response.headers
+        raise HTTPReturn(http.BAD_REQUEST, headers=headers, body=body)
+
+
 def setup_module(app):
     app.add_route('/api/:collection', method='GET', action='list')
     app.add_route('/api/:collection', method='POST', action='create')
@@ -98,6 +115,7 @@ def setup_module(app):
     app.add_route('/api/:collection/:id', action='_method_not_allowed')
 
     app.add_input_filter(HandleMethodNotAllowed(), priority=10)
+    app.add_exception_handler(HandleArgProcError())
 
     app.add_input_filter(EnsureNoEntity(), action='list')
     app.add_output_filter(ReverseResourceList(), action='list')
