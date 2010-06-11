@@ -128,8 +128,8 @@ class FormatEntity(OutputFilter):
     """Format a Resource into a response entity."""
 
     def filter(self, output):
-        if not output:
-            return ''
+        if not isinstance(output, dict) and not isinstance(output, list):
+            return output
         ctype = response.header('Content-Type')
         if ctype is None:
             accept = request.header('Accept', '*/*')
