@@ -151,6 +151,7 @@ class FormatEntity(OutputFilter):
             raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
                              reason='Cannot convert to %s' % ctype)
         response.set_header('Content-Type', '%s; charset=%s' % (ctype, charset))
+        response.set_header('Content-Length', str(len(output)))
         return output
 
     def _format_xml_resource(self, value, type=None):
