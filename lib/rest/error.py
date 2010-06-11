@@ -19,3 +19,6 @@ class Error(Exception):
         self.headers = headers
         self.body = body
         self.reason = reason  # The reason is only shown in the logs
+
+
+HTTPReturn = Error
