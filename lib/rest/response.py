@@ -6,6 +6,7 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
+import rest
 from rest import http
 from rest.api import mapper
 
@@ -16,7 +17,9 @@ class Response(object):
     def __init__(self, environ):
         self.environ = environ
         self.status = http.OK
-        self.headers = [('Content-Type', 'text/plain')]
+        version = '.'.join(map(str, rest.version))
+        self.headers = [('Server', 'python-rest/%s' % version),
+                        ('Date', http.format_date())]
 
     def header(self, name):
         for hname,value in self.headers:
