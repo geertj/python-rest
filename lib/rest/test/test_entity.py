@@ -112,7 +112,7 @@ class TestParseEntity(object):
         collection = BookCollection()
         api.collection._register(collection)
 
-    def test_round_trips(self):
+    def test_round_trips_xml(self):
         parser = ParseEntity()
         formatter = FormatEntity()
         for xml,yaml,resource in self.testdata:
@@ -121,15 +121,20 @@ class TestParseEntity(object):
             assert parser.filter(xml) == resource
             output = formatter.filter(resource)
             assert parser.filter(output) == resource
+
+    def test_round_trips_yaml(self):
+        parser = ParseEntity()
+        formatter = FormatEntity()
+        for xml,yaml,resource in self.testdata:
             api.request.set_header('Accept', 'text/yaml')
             api.request.set_header('Content-Type', 'text/yaml')
             assert parser.filter(yaml) == resource
             output = formatter.filter(resource)
             assert parser.filter(output) == resource
 
-    def test_round_trips_list(self):
+    def test_round_trips_list_xml(self):
         parser = ParseEntity()
-        formatter = FormatEntityList()
+        formatter = FormatEntity()
         for xml,yml,resource in self.testdata:
             api.request.set_header('Accept', 'text/xml')
             api.request.set_header('Content-Type', 'text/xml')
@@ -139,6 +144,11 @@ class TestParseEntity(object):
             output = etree.tostring(root[0])
             parsed = parser.filter(output)
             assert parsed == resource
+
+    def test_round_trips_list_yaml(self):
+        parser = ParseEntity()
+        formatter = FormatEntity()
+        for xml,yml,resource in self.testdata:
             api.request.set_header('Accept', 'text/yaml')
             api.request.set_header('Content-Type', 'text/yaml')
             output = formatter.filter([resource])

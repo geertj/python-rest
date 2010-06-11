@@ -16,17 +16,16 @@ class TestResponse(object):
     def test_basic(self):
         response = Response(environ)
         assert response.status == http.OK
-        assert response.header('Content-Type') == 'text/plain'
 
     def test_headers(self):
         response = Response(environ)
-        assert len(response.headers) == 1
         response.set_header('Content-Type', 'text/xml')
-        assert len(response.headers) == 1
+        nheaders = len(response.headers)
         assert response.header('Content-Type') == 'text/xml'
+        assert len(response.headers) == nheaders
         assert response.header('Header-1') is None
         response.set_header('Header-1', 'value1')
         assert response.header('Header-1') == 'value1'
         assert response.header('header-1') == 'value1'
         assert response.header('HEADER-1') == 'value1'
-        assert len(response.headers) == 2
+        assert len(response.headers) == nheaders+1

@@ -26,6 +26,15 @@ from rest.resource import Resource
 class BookCollection(Collection):
 
     name = 'books'
+    contains = 'book'
+
+    entity_transform = """
+        $!type <=> $!type
+        $id:int <=> $id
+        $title <=> $title
+        $reviews <= $reviews
+        """
+
 
     def __init__(self):
         self.books = []
@@ -44,11 +53,18 @@ class BookCollection(Collection):
             raise KeyError
         return book
 
-    def list(self, **filter):
+    def list(self, **kwargs):
         match = []
+        id = kwargs.get('id')
+        detail = kwargs.get('detail')
         for book in self.books:
-            if 'id' not in filter or book['id'] == filter['id']:
-                match.append(book)
+            if id and book['id'] != id:
+                continue
+            book = book.copy()
+            if detail == '2':
+                book['reviews'] = [Resource('review',
+                                          { 'comment': 'Very good' })]
+            match.append(book)
         return match
 
     def create(self, input):
@@ -68,7 +84,6 @@ class BookCollection(Collection):
         if not book:
             raise KeyError
         self.books.remove(book)
-
 
 
 class BookApplication(Application):
