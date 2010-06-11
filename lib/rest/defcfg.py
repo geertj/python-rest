@@ -14,9 +14,8 @@ from rest.api import request, response, mapper
 from rest.error import Error as HTTPReturn
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
 from rest.util import make_absolute
-from rest.entity import (ParseEntity, FormatEntity, FormatEntityList,
-                         TransformResource, ReverseResource,
-                         ReverseResourceList)
+from rest.entity import (ParseEntity, FormatEntity, TransformResource,
+                         ReverseResource)
 from rest.resource import Resource
 
 
@@ -119,8 +118,8 @@ def setup_module(app):
     app.add_exception_handler(HandleArgProcError())
 
     app.add_input_filter(EnsureNoEntity(), action='list')
-    app.add_output_filter(ReverseResourceList(), action='list')
-    app.add_output_filter(FormatEntityList(), action='list')
+    app.add_output_filter(ReverseResource(), action='list')
+    app.add_output_filter(FormatEntity(), action='list')
 
     app.add_input_filter(EnsureNoEntity(), action='show')
     app.add_output_filter(ReverseResource(), action='show')
