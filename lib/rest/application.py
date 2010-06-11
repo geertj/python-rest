@@ -222,7 +222,7 @@ class Application(object):
         input = request.read()
         self.logger.debug('Read %d bytes of input' % len(input))
         self.register_globals(collection, request, response)
-        collection.setup()
+        collection._setup()
         try:
             self.logger.debug('Running input filters')
             input = self.filter_input(m['collection'], m['action'], input)
@@ -238,7 +238,7 @@ class Application(object):
             if exception:
                 raise exception
         finally:
-            collection.teardown()
+            collection._teardown()
             self.release_globals()
         self.logger.debug('Response: %s (%s; %d bytes)' %
                      (response.status, response.header('Content-Type'),

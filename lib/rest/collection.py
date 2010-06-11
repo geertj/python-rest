@@ -26,10 +26,10 @@ class Collection(object):
         HTTP method."""
         raise NotImplementedError
 
-    def setup(self):
+    def _setup(self):
         """Called just before a request method is called."""
 
-    def teardown(self):
+    def _teardown(self):
         """Called after a request has been finished."""
 
     def _get_namespace(self):
