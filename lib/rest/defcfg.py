@@ -61,7 +61,7 @@ class HandleCreateOutput(OutputFilter):
         if isinstance(output, tuple):
             url, object = output
         elif output:
-            url, object = output, None
+            url, object = output, ''
         url = make_absolute(url)
         response.set_header('Location', url)
         # See RFC5023 section 9.2
