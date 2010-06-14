@@ -273,6 +273,8 @@ class TransformBase(InputFilter):
 
     def transform(self, resource):
         if isinstance(resource, dict):
+            if '!type' not in resource:
+                resource['!type'] = collection.contains
             for key,value in resource.items():
                 resource[key] = self.transform(value)
             xform = self._get_transform(resource)
