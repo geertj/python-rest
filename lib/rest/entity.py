@@ -15,7 +15,7 @@ from StringIO import StringIO
 from argproc import ArgumentProcessor
 from rest import http
 from rest.api import request, response, collection, application
-from rest.error import Error as HTTPReturn
+from rest.error import HTTPReturn
 from rest.filter import InputFilter, OutputFilter
 from rest.resource import Resource
 
