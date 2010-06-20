@@ -53,7 +53,7 @@ class Extension(ISAPIThreadPoolHandler):
 
 def create_isapi_handler(fname, opts):
     """Generate a Python script that will be out ISAPI entry point."""
-    fout = file(fname, 'w')
+    fout = open(fname, 'w')
     fout.write('## This file is auto-generated and will be overwritten\n')
     fout.write('from rest.msiis import Extension\n')
     fout.write('from rest.util import setup_logging\n')
@@ -141,7 +141,7 @@ def fix_egg_permissions(dir):
 def update_web_config(webroot):
     fname = os.path.join(webroot, 'web.config')
     try:
-        fin = file(fname, 'r')
+        fin = open(fname, 'r')
         tree = ElementTree()
         tree.parse(fin)
         fin.close()
@@ -165,7 +165,7 @@ def update_web_config(webroot):
                 static.remove(node)
         if len(static) == 0:
             webserver.remove(static)
-    fout = file(fname, 'w')
+    fout = open(fname, 'w')
     tree.write(fout)
     fout.close()
     print 'Updated web.config.'

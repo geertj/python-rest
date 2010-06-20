@@ -7,9 +7,9 @@
 # "AUTHORS" for a complete overview.
 
 import binascii
-from cgi import parse_qs
 
 from rest import http
+from rest.http import parse_qs
 from rest.error import Error as HTTPReturn
 
 
