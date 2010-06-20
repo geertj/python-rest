@@ -20,7 +20,7 @@ re_module = re.compile('([a-z_][a-z0-9_]*(?:\.[a-z_][a-z0-9_]+)*)'
                        ':([a-z_][a-z0-9_]+)', re.I)
 
 
-class RestServer(WSGIServer):
+class RESTServer(WSGIServer):
     """REST HTTP server."""
 
     def __init__(self, address, handler_class):
@@ -33,7 +33,7 @@ class RestServer(WSGIServer):
         WSGIServer.shutdown(self)
 
 
-class RestRequestHandler(WSGIRequestHandler):
+class RESTRequestHandler(WSGIRequestHandler):
 
     def address_string(self):
         # Do not resolve DNS name of the peer during a request.
@@ -46,7 +46,7 @@ class RestRequestHandler(WSGIRequestHandler):
 
 
 def make_server(host, port, app):
-    return _make_server(host, port, app, RestServer, RestRequestHandler)
+    return _make_server(host, port, app, RESTServer, RESTRequestHandler)
 
 
 def program_name():
