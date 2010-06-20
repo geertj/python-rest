@@ -12,6 +12,7 @@ from cgi import parse_qs
 from rest import http
 from rest.error import Error as HTTPReturn
 
+
 class Request(object):
     """HTTP Request"""
 
