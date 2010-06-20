@@ -10,7 +10,11 @@ import itertools
 from collections import namedtuple
 from httplib import responses as reasons
 from httplib import HTTP_PORT as PORT, HTTPS_PORT as SSL_PORT
-from rfc822 import formatdate as format_date
+from email.utils import formatdate as format_date
+try:
+    from urllib.parse import parse_qs
+except ImportError:
+    from cgi import parse_qs
 
 
 # Export HTTP status codes

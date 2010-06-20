@@ -46,14 +46,14 @@ class mybuild(build):
         version = tuple(map(int, version_info['version'].split('.')))
         contents += 'version = %s\n' % repr(version)
         try:
-            fin = file(fname, 'r')
+            fin = open(fname, 'r')
         except IOError:
             current = None
         else:
             current = fin.read()
             fin.close()
         if contents != current:
-            fout = file(fname, 'w')
+            fout = open(fname, 'w')
             fout.write(contents)
             fout.close()
 
