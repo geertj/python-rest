@@ -6,10 +6,6 @@
 # Python-REST is copyright (c) 2010 by the Python-REST authors. See the file
 # "AUTHORS" for a complete overview.
 
-from rest import http
-from rest.api import request, response, mapper, collection
-from rest.error import Error
-
 
 class InputFilter(object):
     """Base class for input filters."""
