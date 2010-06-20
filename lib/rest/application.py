@@ -66,10 +66,6 @@ class Application(object):
 
     def add_input_filter(self, filter, collection=None, action=None, priority=50):
         """Add an input filter."""
-        if isinstance(action, tuple) or isinstance(action, list):
-            for act in action:
-                self.add_input_filter(filter, collection, act, priority)
-            return
         key = (collection, action)
         if key not in self.input_filters:
             self.input_filters[key] = []
@@ -77,10 +73,6 @@ class Application(object):
 
     def add_output_filter(self, filter, collection=None, action=None, priority=50):
         """Add an output filter."""
-        if isinstance(action, tuple) or isinstance(action, list):
-            for act in action:
-                self.add_output_filter(filter, collection, act, priority)
-            return
         key = (collection, action)
         if key not in self.output_filters:
             self.output_filters[key] = []
@@ -88,10 +80,6 @@ class Application(object):
 
     def add_exception_handler(self, handler, collection=None, action=None, priority=50):
         """Add an exception handler."""
-        if isinstance(action, tuple) or isinstance(action, list):
-            for act in action:
-                self.add_exception_handler(handler, collection, act, priority)
-            return
         key = (collection, action)
         if key not in self.exception_handlers:
             self.exception_handlers[key] = []
