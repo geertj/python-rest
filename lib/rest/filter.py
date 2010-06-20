@@ -11,13 +11,6 @@ from rest.api import request, response, mapper, collection
 from rest.error import Error
 
 
-HIGHEST = 1
-HIGHER = 25
-NORMAL = 50
-LOWER = 75
-LOWEST = 99
-
-
 class InputFilter(object):
     """Base class for input filters."""
 
