@@ -102,7 +102,7 @@ class Application(object):
 
     def load_modules(self):
         """Implement this method in a subclass to load modules."""
-        self.load_module('rest.defcfg')
+        self.load_module('rest.protocol')
 
     def unload_module(self, modname):
         """Unload a single module."""
