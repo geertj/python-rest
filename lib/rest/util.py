@@ -8,7 +8,10 @@
 
 import sys
 import logging
+import yaml
+
 from rest.api import request
+from rest.resource import Resource
 
 
 def make_absolute(relurl):
@@ -42,3 +45,33 @@ def import_module(mname):
     except ImportError:
         return
     return sys.modules[mname]
+
+
+def __construct_resource(loader, node):
+    """YAML constructor that constructs a Resource."""
+    if isinstance(node, yaml.MappingNode):
+        mapping = loader.construct_mapping(node)
+        resource = Resource(node.tag[1:], mapping)
+    else:
+        resource = loader.construct_undefined(node)
+    return resource
+
+def _pyyaml_construct_resources():
+    """Configure PyYAML so that it will process unknown tags and return a
+    Resource instance for them."""
+    yaml.Loader.add_constructor(None, __construct_resource)
+
+
+def __represent_resource(loader, data):
+    if '!type' in data:
+        data = data.copy()
+        tag = '!%s' % data.pop('!type')
+    else:
+        tag = u'tag:yaml.org,2002:map'
+    return loader.represent_mapping(tag, data)
+
+def _pyyaml_represent_resources():
+    """Configure PyYAML such that it will represent a Resource instance with a
+    !tag corresponding to its type."""
+    yaml.Dumper.add_representer(dict, __represent_resource)
+    yaml.Dumper.add_representer(Resource, __represent_resource)
