@@ -253,10 +253,11 @@ class Application(object):
         return output
 
     def close(self):
-        """Close the connection. Called after every request."""
+        """Close the connection. Called after every request by the WSGI
+        framework."""
         self.unload_modules()
 
     @classmethod
     def shutdown(cls):
         """Shut down the application. Called once in the life time of a
-        process."""
+        process. This is a python-rest specific extension to WSGI."""
