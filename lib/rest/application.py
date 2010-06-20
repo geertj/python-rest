@@ -36,6 +36,7 @@ class Application(object):
         self.input_filters = {}
         self.output_filters = {}
         self.exception_handlers = {}
+        self.modules = {}
         self.serial = 0
         self.logger = logging.getLogger('rest')
         self.load_modules()
@@ -99,12 +100,14 @@ class Application(object):
     def setup_filters(self):
         """Implement this method in a subclass to add filters."""
 
-    def load_module(self, module):
+    def load_module(self, modname):
         """Load all collections, routes, input filters, output filters and
         exception handlers from a module."""
-        __import__(module)
+        __import__(modname)
+        module = sys.modules[modname]
+        self.modules[modname] = module
         try:
-            setup_module = getattr(sys.modules[module], 'setup_module')
+            setup_module = getattr(module, 'setup_module')
         except AttributeError:
             return
         setup_module(self)
@@ -112,6 +115,20 @@ class Application(object):
     def load_modules(self):
         """Implement this method in a subclass to load modules."""
         self.load_module('rest.defcfg')
+
+    def unload_module(self, modname):
+        """Unload a single module."""
+        module = self.modules[modname]
+        try:
+            teardown_module = getattr(module, 'teardown_module')
+        except AttributeError:
+            return
+        teardown_module(self)
+
+    def unload_modules(self):
+        """Unload modules."""
+        for mod in self.modules:
+            self.unload_module(mod)
 
     def filter_input(self, collection, action, input):
         """Filter input."""
@@ -249,6 +266,7 @@ class Application(object):
 
     def close(self):
         """Close the connection. Called after every request."""
+        self.unload_modules()
 
     @classmethod
     def shutdown(cls):
