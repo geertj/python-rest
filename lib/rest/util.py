@@ -11,10 +11,6 @@ import logging
 from rest.api import request
 
 
-def issequence(seq):
-    return isinstance(seq, tuple) or isinstance(seq, list)
-
-
 def make_absolute(relurl):
     url = 'https://' if request.secure else 'http://'
     url += request.server
