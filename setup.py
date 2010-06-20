@@ -62,15 +62,20 @@ class mybuild(build):
         build.run(self)
 
 
+install_requires = ['argproc >= 1.3', 'PyYAML >= 3.09']
+entry_points = { 'console_scripts': [
+        'python-rest-cmdline = rest.server:main' ] }
+if sys.platform == 'win32':
+    install_requires.append('isapi_wsgi >= 0.4.2')
+    entry_points['console_scripts'].append(
+            'python-rest-isapi = rest.msiis:main')
+
 setup(
     package_dir = {'': 'lib'},
     packages = ['rest', 'rest.entity', 'rest.test'],
     test_suite = 'nose.collector',
-    entry_points = { 'console_scripts': [
-            'python-rest-cmdline = rest.server:main',
-            'python-rest-isapi = rest.msiis:main' ] },
-    install_requires = ['argproc >= 1.3', 'PyYAML >= 3.09',
-                        'isapi_wsgi >= 0.4.2'],
+    entry_points = entry_points,
+    install_requires = install_requires,
     cmdclass = { 'build': mybuild },
     **version_info
 )
