@@ -13,10 +13,10 @@ class Resource(dict):
     represents one object and is part of a collection.
 
     A resource is just a Python dictionary with a few special requirements.
-    These requirements should normally not get in the way but ensure that
-    serialization / deserialization to mutiple formats becomes easier.
+    These requirements should normally not get in your way, but they ensure
+    that serialization / deserialization to mutiple formats becomes easier.
 
-     - It has a type, stored in the '!type' key.
+     - A Resource has a type, stored in the '!type' key.
      - All keys are strings.
      - All values are either scalars, lists, or Resources.
 
@@ -24,6 +24,9 @@ class Resource(dict):
      which you (the programmer) are bound.
      """
 
-    def __init__(self, type, d={}):
-        super(Resource, self).__init__(d)
+    def __init__(self, type, *args, **kwargs):
+        super(Resource, self).__init__()
+        for arg in args:
+            self.update(arg)
+        self.update(**kwargs)
         self['!type'] = type
