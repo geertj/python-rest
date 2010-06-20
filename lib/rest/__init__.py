@@ -9,6 +9,7 @@
 from rest._version import *
 from rest.application import Application
 from rest.collection import Collection
+from rest.resource import Resource
 from rest.request import Request
 from rest.response import Response
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
