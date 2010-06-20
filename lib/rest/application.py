@@ -213,7 +213,7 @@ class Application(object):
         self.logger.debug('New request: %s %s' % (request.method, request.uri))
         m = self.mapper.match(request.path, request.method)
         if not m:
-            raise Error(http.NOT_FOUND, reason='URL unmapped')
+            raise Error(http.NOT_FOUND, reason='URL is not mapped')
         self.logger.debug('URL mapped to %s:%s' % (m['collection'], m['action']))
         request.match = m
         collection = self.collections.get(m['collection'])
