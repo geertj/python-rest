@@ -9,14 +9,25 @@
 import traceback
 
 from argproc import Error as ArgProcError
-from rest import http
+from rest import http, api
 from rest.api import request, response, mapper
 from rest.error import Error as HTTPReturn
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
-from rest.util import make_absolute
-from rest.entity import (ParseEntity, FormatEntity, TransformResource,
-                         ReverseResource)
+from rest.proxy import ObjectProxy
 from rest.resource import Resource
+from rest.collection import Collection
+from rest.util import make_absolute
+from rest.entity.parse import ParserManager
+from rest.entity.format import FormatterManager
+from rest.entity.transform import Transformer
+from rest.entity.xml import XMLParser, XMLFormatter
+from rest.entity.yaml import YAMLParser, YAMLFormatter
+from rest.entity.json import JSONParser, JSONFormatter
+
+
+api.parsermanager = ObjectProxy()
+api.formattermanager = ObjectProxy()
+api.transformer = ObjectProxy()
 
 
 class HandleMethodNotAllowed(InputFilter):
@@ -48,15 +59,45 @@ class HandleKeyError(ExceptionHandler):
         return exception
 
 
+class ParseEntity(InputFilter):
+    """Parse a textual entity into a Resource."""
+
+    def filter(self, input):
+        parsed = api.parsermanager.parse(input)
+        return parsed
+
+
+class FormatEntity(OutputFilter):
+    """Format a Resource into a textual entity."""
+
+    def filter(self, output):
+        formatted = api.formattermanager.format(output)
+        return formatted
+
+
+class TransformResource(InputFilter):
+    """Transform a Resource from external to internal form."""
+
+    def filter(self, input):
+        transformed = api.transformer.transform(input)
+        return transformed
+
+
+class ReverseTransformResource(OutputFilter):
+    """Transform a Resource from internal to external form."""
+
+    def filter(self, output):
+        transformed = api.transformer.transform(output, reverse=True)
+        return transformed
+
+
 class HandleCreateOutput(OutputFilter):
     """For the output of the "create" action, set the status to 201
     (CREATED), and add a "Location" header with the correct location of the
     newly created entity."""
 
     def filter(self, output):
-        # XXX: need to distinghuish between "OK" and "not set".
-        if response.status == http.OK:
-            response.status = http.CREATED
+        response.status = http.CREATED
         if isinstance(output, tuple):
             url, object = output
         elif output:
@@ -85,7 +126,7 @@ class HandleDeleteOutput(OutputFilter):
     def filter(self, output):
         if output:
             raise HTTPReturn(http.INTERNAL_SERVER_ERROR,
-                    reason='Not expecting any output for this action')
+                    reason='Not expecting any output for "delete" action')
         response.status = http.NO_CONTENT
         return ''
 
@@ -118,18 +159,18 @@ def setup_module(app):
     app.add_exception_handler(HandleArgProcError())
 
     app.add_input_filter(EnsureNoEntity(), action='list')
-    app.add_output_filter(ReverseResource(), action='list')
+    app.add_output_filter(ReverseTransformResource(), action='list')
     app.add_output_filter(FormatEntity(), action='list')
 
     app.add_input_filter(EnsureNoEntity(), action='show')
-    app.add_output_filter(ReverseResource(), action='show')
+    app.add_output_filter(ReverseTransformResource(), action='show')
     app.add_output_filter(FormatEntity(), action='show')
     app.add_exception_handler(HandleKeyError(), action='show')
 
     app.add_input_filter(ParseEntity(), action='create')
     app.add_input_filter(TransformResource(), action='create')
     app.add_output_filter(HandleCreateOutput(), action='create')
-    app.add_output_filter(ReverseResource(), action='create')
+    app.add_output_filter(ReverseTransformResource(), action='create')
     app.add_output_filter(FormatEntity(), action='create')
 
     app.add_input_filter(EnsureNoEntity(), action='delete')
@@ -139,6 +180,30 @@ def setup_module(app):
     app.add_input_filter(ParseEntity(), action='update')
     app.add_input_filter(TransformResource(), action='update')
     app.add_output_filter(HandleUpdateOutput(), action='update')
-    app.add_output_filter(ReverseResource(), action='update')
+    app.add_output_filter(ReverseTransformResource(), action='update')
     app.add_output_filter(FormatEntity(), action='update')
     app.add_exception_handler(HandleKeyError(), action='update')
+
+    parsermanager = ParserManager()
+    parsermanager.add_parser('text/xml', XMLParser())
+    parsermanager.add_parser('text/x-yaml', YAMLParser())
+    parsermanager.add_parser('application/json', JSONParser())
+    api.parsermanager._register(parsermanager)
+
+    formattermanager = FormatterManager()
+    formattermanager.add_formatter('text/xml', XMLFormatter())
+    formattermanager.add_formatter('text/x-yaml', YAMLFormatter())
+    formattermanager.add_formatter('application/json', JSONFormatter())
+    api.formattermanager._register(formattermanager)
+
+    transformer = Transformer()
+    api.transformer._register(transformer)
+
+    def dummy_method(self):
+        pass
+
+    Collection._method_not_allowed = dummy_method
+
+def unload_module(app):
+    api.parsermanager._release()
+    api.formattermanager._release()
