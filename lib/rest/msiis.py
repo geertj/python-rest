@@ -12,6 +12,9 @@ import os.path
 import stat
 import inspect
 import py_compile
+
+from xml.etree import ElementTree as etree
+from xml.etree.ElementTree import Element, SubElement, ElementTree
 from optparse import OptionParser
 
 from win32security import (GetNamedSecurityInfo, SetNamedSecurityInfo,
@@ -31,6 +34,7 @@ from rest.server import re_module, program_name
 from rest.util import import_module
 
 
+webroot = r'C:\inetpub\wwwroot'
 eggdir = r'C:\Documents and Settings\Default User\Application Data' \
          r'\Python-Eggs'
 
@@ -134,6 +138,39 @@ def fix_egg_permissions(dir):
         print 'All eggs have correct permissions.'
 
 
+def update_web_config(webroot):
+    fname = os.path.join(webroot, 'web.config')
+    try:
+        fin = file(fname, 'r')
+        tree = ElementTree()
+        tree.parse(fin)
+        fin.close()
+    except OSError:
+        config = Element('configuration')
+        tree = ElementTree(node)
+    config = tree.getroot()
+    webserver = config.find('./system.webServer')
+    if webserver is None:
+        webserver = SubElement(root, 'system.webServer')
+    errors = webserver.find('./httpErrors')
+    if errors is None:
+        errors = SubElement(webserver, 'httpErrors')
+    errors.attrib['errorMode'] = 'Custom'
+    errors.attrib['existingResponse'] = 'PassThrough'
+    errors.tail = '\n' + ' '*4
+    static = webserver.find('./staticContent')
+    if static is not None:
+        for node in static:
+            if node.tag == 'mimeMap':
+                static.remove(node)
+        if len(static) == 0:
+            webserver.remove(static)
+    fout = file(fname, 'w')
+    tree.write(fout)
+    fout.close()
+    print 'Updated web.config.'
+
+
 def main():
     parser = OptionParser(usage='%prog [options] install | remove',
                           prog=program_name())
@@ -173,3 +210,4 @@ def main():
     create_egg_cache(eggdir)
     dir = os.path.join(sys.exec_prefix, 'Lib', 'site-packages')
     fix_egg_permissions(dir)
+    update_web_config(webroot)
