@@ -12,6 +12,5 @@ from rest.collection import Collection
 from rest.request import Request
 from rest.response import Response
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
-from rest.filter import LOWEST, LOWER, NORMAL, HIGHER, HIGHEST
 from rest.error import Error
 from rest.server import make_server
