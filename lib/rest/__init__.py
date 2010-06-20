@@ -14,4 +14,3 @@ from rest.request import Request
 from rest.response import Response
 from rest.filter import InputFilter, OutputFilter, ExceptionHandler
 from rest.error import Error, HTTPReturn
-from rest.server import make_server
