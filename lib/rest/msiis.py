@@ -7,7 +7,9 @@
 # "AUTHORS" for a complete overview.
 
 import sys
+import os
 import os.path
+import stat
 import inspect
 import py_compile
 from optparse import OptionParser
@@ -23,6 +25,7 @@ from ntsecuritycon import (FILE_GENERIC_READ, FILE_GENERIC_WRITE,
 from isapi_wsgi import ISAPIThreadPoolHandler
 from isapi.install import (ISAPIParameters, ScriptMapParams,
                            VirtualDirParameters, HandleCommandLine)
+from pywintypes import error as WindowsError
 
 from rest.server import re_module, program_name
 from rest.util import import_module
@@ -63,12 +66,14 @@ def create_isapi_handler(fname, opts):
 
 def create_egg_cache(eggdir):
     """Create egg cache."""
-    # Make sure there is an egg cache that is writeable to the IUSR_xxx
+    # Make sure there is an egg cache that is writeable to the IUSR
     # account.
-    result = FindFilesW(eggdir)
-    if result:
-        finfo = result[0]
-        if not finfo[0] & FILE_ATTRIBUTE_DIRECTORY:
+    try:
+        st = os.stat(eggdir)
+    except OSError:
+        st = None
+    if st is not None:
+        if not stat.S_ISDIR(st.st_mode):
             raise Error, 'Egg cache is not a directory.'
         print 'Egg cache exists.'
     else:
@@ -76,8 +81,11 @@ def create_egg_cache(eggdir):
         print 'Egg cache created.'
 
     # Change/check the ACL
-    hostname = LookupAccountName(None, 'Administrator')[1]  # get host name
-    target = LookupAccountName(None, 'IUSR_%s' % hostname)[0]
+    try:
+        target = LookupAccountName(None, 'IUSR')[0]  # IIS7
+    except WindowsError:
+        hostname = LookupAccountName(None, 'Administrator')[1]  # get host name
+        target = LookupAccountName(None, 'IUSR_%s' % hostname)[0]  # IIS6
     desc = GetNamedSecurityInfo(eggdir, SE_FILE_OBJECT,
                                 DACL_SECURITY_INFORMATION)
     acl = desc.GetSecurityDescriptorDacl()
