@@ -64,7 +64,7 @@ class mybuild(build):
 
 setup(
     package_dir = {'': 'lib'},
-    packages = ['rest', 'rest.test'],
+    packages = ['rest', 'rest.entity', 'rest.test'],
     test_suite = 'nose.collector',
     entry_points = { 'console_scripts': [
             'python-rest-cmdline = rest.server:main',
