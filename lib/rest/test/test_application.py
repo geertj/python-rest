@@ -16,11 +16,9 @@ from httplib import HTTPConnection
 from xml.etree import ElementTree as etree
 from xml.etree.ElementTree import XML, Element
 
-from rest import (Application, Collection, InputFilter, OutputFilter,
-                  Error, make_server)
+from rest import Application, Collection, Resource
 from rest.api import request, response, mapper
-from rest.filter import LOWER, HIGHER
-from rest.resource import Resource
+from rest.server import make_server
 
 
 class BookCollection(Collection):
