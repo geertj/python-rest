@@ -145,7 +145,7 @@ def update_web_config(webroot):
         tree = ElementTree()
         tree.parse(fin)
         fin.close()
-    except OSError:
+    except IOError:
         config = Element('configuration')
         tree = ElementTree(node)
     config = tree.getroot()
