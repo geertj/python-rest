@@ -16,7 +16,7 @@ from setuptools import setup
 
 version_info = {
     'name': 'python-rest',
-    'version': '1.2',
+    'version': '1.3',
     'description': 'A mini-framework for creating RESTful applications.',
     'author': 'Geert Jansen',
     'author_email': 'geertj@gmail.com',
